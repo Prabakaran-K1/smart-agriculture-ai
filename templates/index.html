@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="ta">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17372b">
+  <title>Fieldwise | Smart Agriculture AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js" defer></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --forest: #17372b;
+      --forest-deep: #10291f;
+      --leaf: #b9d86b;
+      --paper: #f5f5ee;
+      --white: #fffefa;
+      --ink: #172a20;
+      --muted: #748076;
+      --line: #e4e7dc;
+      --coral: #dd7555;
+      --gold: #e5b75e;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "DM Sans", sans-serif;
+      font-size: 14px;
+      min-width: 320px;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { min-height: 100vh; }
+    .topbar {
+      height: 72px;
+      padding: 0 clamp(20px, 5vw, 76px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--forest); text-decoration: none; }
+    .brand-mark {
+      width: 34px; height: 34px; display: grid; place-items: center;
+      border-radius: 10px; background: var(--forest); color: var(--leaf);
+      font: 800 17px "Manrope", sans-serif;
+    }
+    .brand-name { font: 800 17px "Manrope", sans-serif; letter-spacing: 0; }
+    .brand-name span { color: #81936c; font-weight: 500; }
+    .top-meta { display: flex; align-items: center; gap: 9px; color: #617267; font-size: 12px; }
+    .status-dot { width: 8px; height: 8px; background: #75a96a; border-radius: 50%; box-shadow: 0 0 0 4px #75a96a20; }
+    main { max-width: 1260px; margin: 0 auto; padding: 42px 28px 64px; }
+    .intro { display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 27px; animation: rise .45s ease both; }
+    .eyebrow { color: #73856c; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+    h1 { margin: 8px 0 7px; font: 700 clamp(26px, 3vw, 35px)/1.15 "Manrope", sans-serif; letter-spacing: 0; }
+    .intro p { margin: 0; color: var(--muted); font-size: 14px; }
+    .season-tag { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; padding: 10px 13px; border: 1px solid #dfe5d4; border-radius: 9px; color: #52664e; background: #eef1e5; font-size: 12px; }
+    .season-icon { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 7px; background: #dce8be; color: var(--forest); font-weight: 700; }
+    .workspace { display: grid; grid-template-columns: minmax(350px, .88fr) minmax(0, 1.12fr); align-items: start; gap: 20px; }
+    .panel { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); animation: rise .5s ease both; }
+    .form-panel { animation-delay: .06s; }
+    .panel-head { padding: 21px 23px 18px; border-bottom: 1px solid var(--line); }
+    .panel-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    h2 { margin: 0; font: 700 16px "Manrope", sans-serif; letter-spacing: 0; }
+    .step { color: #8c9888; font-size: 11px; }
+    .panel-head p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    form { padding: 20px 23px 22px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 15px; row-gap: 16px; }
+    .field { min-width: 0; }
+    .field label { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; color: #35473b; font-size: 12px; font-weight: 600; }
+    .field label span { color: #909a8d; font-size: 10px; font-weight: 500; }
+    .input-wrap { position: relative; }
+    .input-wrap input {
+      width: 100%; height: 43px; padding: 0 43px 0 12px; appearance: textfield;
+      border: 1px solid #dfe4da; border-radius: 7px; outline: none;
+      background: #fff; color: var(--ink); transition: border-color .16s, box-shadow .16s;
+    }
+    .input-wrap input::-webkit-inner-spin-button, .input-wrap input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+    .input-wrap input:focus { border-color: #78935f; box-shadow: 0 0 0 3px #78935f20; }
+    .unit { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: #8d988d; font-size: 11px; pointer-events: none; }
+    .form-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 21px; }
+    .primary-btn, .sample-btn { min-height: 44px; border: 0; border-radius: 7px; font-size: 12px; font-weight: 700; transition: transform .15s, background .15s; }
+    .primary-btn { display: flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; color: #fafff4; background: var(--forest); }
+    .primary-btn:hover { background: var(--forest-deep); transform: translateY(-1px); }
+    .primary-btn:disabled { opacity: .65; cursor: wait; transform: none; }
+    .sample-btn { padding: 0 13px; border: 1px solid #dce3d6; color: #50634d; background: #f5f7f0; }
+    .sample-btn:hover { background: #edf1e5; }
+    .form-note { margin: 13px 0 0; color: #929b90; font-size: 10px; line-height: 1.5; }
+    .symptom-fieldset { margin: 18px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); }
+    .symptom-fieldset legend { padding: 0 8px 0 0; color: #35473b; font-size: 12px; font-weight: 600; }
+    .symptom-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+    .symptom-option { display: flex; align-items: center; gap: 8px; min-height: 35px; padding: 7px 9px; border: 1px solid #e2e7dd; border-radius: 7px; background: #f8f9f5; color: #536252; font-size: 11px; cursor: pointer; }
+    .symptom-option input { width: 14px; height: 14px; flex: 0 0 auto; margin: 0; accent-color: var(--forest); }
+    .photo-tools { margin-top: 17px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .photo-tools-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 9px; color: #35473b; font-size: 12px; font-weight: 600; }
+    .photo-tools-head span { color: #909a8d; font-size: 10px; font-weight: 500; }
+    .photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .photo-button { min-height: 39px; padding: 0 10px; border: 1px solid #dce3d6; border-radius: 7px; color: #50634d; background: #f5f7f0; font-size: 11px; font-weight: 600; }
+    .photo-button:hover { background: #edf1e5; }
+    .photo-preview { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px; border: 1px solid #e2e7dd; border-radius: 8px; background: #fbfcf8; }
+    .photo-preview[hidden] { display: none; }
+    .photo-preview img { width: 54px; height: 54px; flex: 0 0 auto; border-radius: 6px; object-fit: cover; background: #e8ece2; }
+    .photo-file-info { min-width: 0; flex: 1; }
+    .photo-file-info strong { display: block; overflow: hidden; color: #405141; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .photo-file-info span { color: #839084; font-size: 10px; }
+    .photo-remove { padding: 7px; border: 0; color: #8b5749; background: transparent; font-size: 10px; font-weight: 600; }
+    .photo-note { margin: 8px 0 0; color: #879183; font-size: 10px; line-height: 1.5; }
+    .photo-note.error { color: #ad493c; }
+    .photo-diagnosis { margin-top: 10px; padding: 12px; border: 1px solid #dfe8d0; border-radius: 8px; background: #f3f6eb; }
+    .photo-diagnosis[hidden] { display: none; }
+    .diagnosis-top { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .diagnosis-label { color: #7a8a70; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .diagnosis-name { margin-top: 3px; color: var(--forest); font: 700 15px "Manrope", sans-serif; }
+    .diagnosis-score { color: #668453; font: 800 15px "Manrope", sans-serif; text-align: right; }
+    .diagnosis-score small { display: block; color: #8c9a81; font: 500 9px "DM Sans", sans-serif; }
+    .diagnosis-note { margin: 8px 0 0; color: #617060; font-size: 10px; line-height: 1.5; }
+    .camera-view { margin-top: 10px; padding: 9px; border: 1px solid #dfe4da; border-radius: 8px; background: #f6f7f1; }
+    .camera-view[hidden] { display: none; }
+    .camera-video { display: block; width: 100%; max-height: 300px; aspect-ratio: 4 / 3; border-radius: 6px; background: #15271d; object-fit: cover; }
+    .camera-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 9px; }
+    .camera-actions .photo-button { min-width: 112px; }
+    .treatment-panel { margin-top: 20px; }
+    .treatment-grid { display: grid; grid-template-columns: 1.2fr 1fr 1.5fr .8fr; gap: 14px; align-items: end; }
+    .treatment-field { min-width: 0; }
+    .treatment-field label { display: block; margin-bottom: 7px; color: #35473b; font-size: 11px; font-weight: 600; }
+    .treatment-field select, .treatment-field input { width: 100%; min-width: 0; height: 42px; padding: 0 10px; border: 1px solid #dfe4da; border-radius: 7px; outline: none; background: #fff; color: var(--ink); font: 11px "DM Sans", sans-serif; }
+    .treatment-field select:focus, .treatment-field input:focus { border-color: #78935f; box-shadow: 0 0 0 3px #78935f20; }
+    .treatment-submit { margin-top: 17px; }
+    .treatment-result { margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--line); }
+    .treatment-result[hidden] { display: none; }
+    .treatment-metrics { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 10px; }
+    .treatment-metric { min-width: 0; padding: 12px; border: 1px solid #e5e9df; border-radius: 8px; background: #f8f9f5; }
+    .treatment-metric span { display: block; color: #859081; font-size: 9px; }
+    .treatment-metric strong { display: block; margin-top: 5px; color: #294132; font: 700 13px/1.35 "Manrope", sans-serif; overflow-wrap: anywhere; }
+    .treatment-details { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; }
+    .treatment-details p, .treatment-details li { color: #657262; font-size: 10px; line-height: 1.55; }
+    .treatment-details ul { display: grid; gap: 4px; margin: 0; padding-left: 16px; }
+    .treatment-details a { color: #4f7047; font-weight: 600; }
+    .treatment-error { margin: 12px 0 0; color: #ad493c; font-size: 11px; }
+    .result-panel { animation-delay: .12s; }
+    .field-photo { position: relative; height: 182px; overflow: hidden; background: #5c7150; }
+    .field-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .field-photo::after { position: absolute; inset: 0; content: ""; background: linear-gradient(90deg, #10291f9c 0%, #10291f24 68%, transparent); }
+    .photo-caption { position: absolute; z-index: 1; left: 23px; bottom: 19px; color: white; }
+    .photo-caption span { display: block; margin-bottom: 5px; color: #d6e8ad; font-size: 9px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+    .photo-caption strong { font: 600 19px "Manrope", sans-serif; }
+    .photo-source { position: absolute; z-index: 1; right: 12px; bottom: 10px; color: #ffffffb8; font-size: 9px; }
+    .result-content { padding: 21px 23px 22px; }
+    .result-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .result-label h2 { font-size: 15px; }
+    .result-label span { color: #8a9688; font-size: 10px; }
+    .empty-state { display: grid; min-height: 170px; place-content: center; justify-items: center; text-align: center; }
+    .empty-symbol { width: 42px; height: 42px; margin-bottom: 11px; display: grid; place-items: center; border-radius: 13px; background: #edf1e5; color: #55704d; font: 700 20px "Manrope", sans-serif; }
+    .empty-state strong { font: 700 13px "Manrope", sans-serif; }
+    .empty-state p { max-width: 255px; margin: 6px 0 0; color: #839084; font-size: 11px; line-height: 1.5; }
+    .recommendation { padding: 15px; border: 1px solid #dfe8d0; border-radius: 9px; background: #f3f6eb; }
+    .recommend-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .crop-kicker { color: #7a8a70; font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; }
+    .crop-name { margin-top: 3px; color: var(--forest); font: 800 25px "Manrope", sans-serif; text-transform: capitalize; }
+    .fit-score { min-width: 61px; text-align: right; color: #668453; font: 800 19px "Manrope", sans-serif; }
+    .fit-score small { display: block; margin-top: 1px; color: #8c9a81; font: 500 9px "DM Sans", sans-serif; }
+    .reason { margin: 12px 0 0; color: #52644f; font-size: 11px; line-height: 1.55; }
+    .alternatives-title { margin: 17px 0 9px; color: #7e8a7c; font-size: 10px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; }
+    .alternative { display: grid; grid-template-columns: minmax(80px, .7fr) 1fr 37px; align-items: center; gap: 10px; min-height: 32px; border-top: 1px solid #edf0e8; color: #465447; font-size: 11px; text-transform: capitalize; }
+    .bar-track { height: 5px; overflow: hidden; border-radius: 5px; background: #e8ece2; }
+    .bar-fill { height: 100%; border-radius: inherit; background: #91aa6d; transition: width .45s ease; }
+    .alternative-score { color: #7b8877; text-align: right; font-size: 10px; }
+    .advisories { display: grid; gap: 0; margin-top: 18px; border-top: 1px solid var(--line); }
+    .advisory-row { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid #edf0e8; }
+    .advisory-heading { display: flex; align-items: start; gap: 8px; }
+    .advisory-index { color: #91a17d; font: 700 10px "Manrope", sans-serif; }
+    .advisory-heading h3 { margin: 0; color: #33483a; font: 700 11px/1.4 "Manrope", sans-serif; }
+    .advisory-copy p { margin: 0 0 7px; color: #617060; font-size: 10px; line-height: 1.5; }
+    .advisory-copy p:last-child { margin-bottom: 0; }
+    .advisory-copy ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .advisory-copy li { color: #4c5c4d; font-size: 10px; line-height: 1.5; }
+    .advisory-copy li strong { color: #304638; }
+    .advisory-meta { display: block; margin: 2px 0 0; color: #7f8b7d; }
+    .advisory-note { color: #8b9588 !important; font-size: 9px !important; }
+    .disclaimer { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e8ecdf; color: #879183; font-size: 10px; line-height: 1.55; }
+    .error-message { margin: 12px 0 0; color: #ad493c; font-size: 11px; }
+    .bilingual-copy { display: inline-flex; max-width: 100%; flex-direction: column; gap: 1px; vertical-align: middle; line-height: 1.2; white-space: normal; }
+    .bilingual-ta { display: block; color: inherit; font-size: 1em; }
+    .bilingual-en { display: block; color: inherit; font-size: .86em; font-weight: 400; opacity: .82; }
+    .photo-button .bilingual-copy, .sample-btn .bilingual-copy { align-items: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 820px) {
+      main { padding: 32px 20px 48px; }
+      .workspace { grid-template-columns: minmax(300px, .95fr) minmax(0, 1.05fr); gap: 14px; }
+      .panel-head, form, .result-content { padding-left: 17px; padding-right: 17px; }
+      .field-grid { column-gap: 11px; }
+    }
+    @media (max-width: 680px) {
+      .topbar { height: 62px; padding: 0 18px; }
+      main { padding: 27px 15px 40px; }
+      .intro { align-items: start; flex-direction: column; margin-bottom: 20px; }
+      .season-tag { align-self: start; }
+      .workspace { grid-template-columns: 1fr; gap: 14px; }
+      .field-grid { column-gap: 14px; }
+      .field-photo { height: 165px; }
+      .panel-head, form, .result-content { padding-left: 19px; padding-right: 19px; }
+      .treatment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .treatment-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .treatment-details { grid-template-columns: 1fr; gap: 8px; }
+    }
+    @media (max-width: 390px) {
+      .field-grid { grid-template-columns: 1fr; row-gap: 13px; }
+      .form-actions { grid-template-columns: 1fr; }
+      .sample-btn { min-height: 40px; }
+      .top-meta { font-size: 0; gap: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Fieldwise home">
+        <span class="brand-mark" aria-hidden="true">f.</span>
+        <span class="brand-name">fieldwise <span>/ agriculture AI</span></span>
+      </a>
+      <div class="top-meta"><span class="status-dot" aria-hidden="true"></span> Crop planning workspace</div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <div class="eyebrow">Field intelligence · 01</div>
+          <h1>Find the right crop for your soil.</h1>
+          <p>Enter your field conditions to explore crops suited to your land.</p>
+        </div>
+        <div class="season-tag"><span class="season-icon" aria-hidden="true">↗</span><span>Soil &amp; climate assessment</span></div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel form-panel" aria-labelledby="conditions-title">
+          <div class="panel-head">
+            <div class="panel-title-row"><h2 id="conditions-title">Field conditions</h2><span class="step">01 / 02</span></div>
+            <p>Use a recent soil test and local weather data.</p>
+          </div>
+          <form id="conditions-form">
+            <div class="field-grid">
+              <div class="field"><label for="nitrogen">Nitrogen <span>N · kg/ha</span></label><div class="input-wrap"><input id="nitrogen" name="nitrogen" type="number" min="0" max="200" step="any" value="90" required><span class="unit">kg/ha</span></div></div>
+              <div class="field"><label for="phosphorus">Phosphorus <span>P · kg/ha</span></label><div class="input-wrap"><input id="phosphorus" name="phosphorus" type="number" min="0" max="200" step="any" value="42" required><span class="unit">kg/ha</span></div></div>
+              <div class="field"><label for="potassium">Potassium <span>K · kg/ha</span></label><div class="input-wrap"><input id="potassium" name="potassium" type="number" min="0" max="200" step="any" value="43" required><span class="unit">kg/ha</span></div></div>
+              <div class="field"><label for="temperature">Temperature <span>°C</span></label><div class="input-wrap"><input id="temperature" name="temperature" type="number" min="0" max="50" step="any" value="23" required><span class="unit">°C</span></div></div>
+              <div class="field"><label for="humidity">Humidity <span>%</span></label><div class="input-wrap"><input id="humidity" name="humidity" type="number" min="0" max="100" step="any" value="78" required><span class="unit">%</span></div></div>
+              <div class="field"><label for="ph">Soil pH <span>0–14</span></label><div class="input-wrap"><input id="ph" name="ph" type="number" min="0" max="14" step="any" value="6.4" required><span class="unit">pH</span></div></div>
+              <div class="field"><label for="rainfall">Rainfall <span>mm</span></label><div class="input-wrap"><input id="rainfall" name="rainfall" type="number" min="0" max="300" step="any" value="180" required><span class="unit">mm</span></div></div>
+            </div>
+            <div class="photo-tools">
+              <div class="photo-tools-head"><strong>Crop photo scan</strong><span>15 leaf classes · runs on device</span></div>
+              <div class="photo-actions">
+                <button class="photo-button" id="camera-button" type="button">Open camera</button>
+                <button class="photo-button" id="gallery-button" type="button">Choose from photos</button>
+              </div>
+              <input class="sr-only" id="camera-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" aria-label="Take a crop photo">
+              <input class="sr-only" id="gallery-input" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose a crop photo">
+              <div class="camera-view" id="camera-view" hidden>
+                <video class="camera-video" id="camera-video" autoplay playsinline muted aria-label="Live crop camera preview"></video>
+                <div class="camera-actions">
+                  <button class="photo-button" id="close-camera" type="button">Cancel</button>
+                  <button class="primary-btn" id="capture-photo" type="button">Take photo</button>
+                </div>
+              </div>
+              <div class="photo-preview" id="photo-preview" hidden>
+                <img id="photo-preview-image" alt="Selected crop photo preview">
+                <div class="photo-file-info"><strong id="photo-filename"></strong><span id="photo-filesize"></span></div>
+                <button class="photo-remove" id="remove-photo" type="button">Remove</button>
+              </div>
+              <div class="photo-diagnosis" id="photo-diagnosis" aria-live="polite" hidden></div>
+              <p class="photo-note" id="photo-note">JPEG, PNG or WebP, up to 5 MB. Scan supports selected tomato, potato and bell-pepper leaf labels; field photos may differ from training images.</p>
+            </div>
+            <fieldset class="symptom-fieldset">
+              <legend>Observed crop symptoms <span class="step">optional</span></legend>
+              <div class="symptom-options">
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="yellow_leaves">Yellowing leaves</label>
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="leaf_spots">Leaf spots</label>
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="chewed_leaves">Chewed leaves</label>
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="wilting">Wilting</label>
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="white_powder">White powder</label>
+                <label class="symptom-option"><input type="checkbox" name="symptoms" value="stunted_growth">Stunted growth</label>
+              </div>
+            </fieldset>
+            <div class="form-actions">
+              <button class="primary-btn" id="submit-button" type="submit"><span>Check crop suitability</span><span aria-hidden="true">→</span></button>
+              <button class="sample-btn" id="sample-button" type="button">Use sample</button>
+            </div>
+            <p class="form-note">N, P and K values are in kg/ha. Rainfall is the seasonal total in mm.</p>
+          </form>
+        </section>
+
+        <section class="panel result-panel" aria-labelledby="result-title" aria-live="polite">
+          <div class="field-photo">
+            <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&amp;fit=crop&amp;w=1200&amp;q=85" alt="Green crop fields stretching across a cultivated landscape" fetchpriority="high">
+            <div class="photo-caption"><span>Grow with better insight</span><strong>Every field has potential.</strong></div>
+            <span class="photo-source">Field conditions matter.</span>
+          </div>
+          <div class="result-content">
+            <div class="result-label"><h2 id="result-title">Your crop outlook</h2><span id="result-status">Awaiting field data</span></div>
+            <div id="result-body" class="empty-state">
+              <span class="empty-symbol" aria-hidden="true">↗</span>
+              <strong>Your recommendations will appear here</strong>
+              <p>Submit your field conditions to see the closest crop matches.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section class="panel treatment-panel" aria-labelledby="treatment-title">
+        <div class="panel-head">
+          <div class="panel-title-row"><h2 id="treatment-title">Medicine, dose &amp; cost planner</h2><span class="step">TNAU guidance · sample prices</span></div>
+          <p>Choose a confirmed crop problem and stage. Advice and dose units follow the cited crop-specific source.</p>
+        </div>
+        <form id="treatment-form">
+          <div class="treatment-grid">
+            <div class="treatment-field"><label for="treatment-case">Confirmed crop problem</label><select id="treatment-case" required><option value="">Loading crop problems...</option></select></div>
+            <div class="treatment-field"><label for="treatment-stage">Crop stage</label><select id="treatment-stage" required disabled><option value="">Choose stage</option></select></div>
+            <div class="treatment-field"><label for="treatment-product">Treatment option</label><select id="treatment-product" required disabled><option value="">Choose crop and stage first</option></select></div>
+            <div class="treatment-field" id="treatment-area-field"><label for="treatment-area">Affected area (ha)</label><input id="treatment-area" type="number" min="0.01" max="10000" step="0.01" value="1" required></div>
+            <div class="treatment-field" id="treatment-seed-field" hidden><label for="treatment-seed">Seed to treat (kg)</label><input id="treatment-seed" type="number" min="0.01" max="1000000" step="any" value="20" disabled></div>
+            <div class="treatment-field" id="treatment-water-field" hidden><label for="treatment-water">Total spray water (L)</label><input id="treatment-water" type="number" min="0.1" max="1000000" step="any" value="" disabled></div>
+          </div>
+          <button class="primary-btn treatment-submit" id="treatment-submit" type="submit"><span>Calculate dose &amp; cost</span><span aria-hidden="true">→</span></button>
+          <p class="form-note">Do not use from a photo or symptom alone. Confirm the crop problem first. Prices are sample estimates only where shown; otherwise request a local quote.</p>
+          <div class="treatment-result" id="treatment-result" aria-live="polite" hidden></div>
+        </form>
+      </section>
+    </main>
+  </div>
+  <script>
+    const form = document.querySelector("#conditions-form");
+    const resultBody = document.querySelector("#result-body");
+    const resultStatus = document.querySelector("#result-status");
+    const submitButton = document.querySelector("#submit-button");
+    const sampleButton = document.querySelector("#sample-button");
+    const cameraInput = document.querySelector("#camera-input");
+    const galleryInput = document.querySelector("#gallery-input");
+    const cameraView = document.querySelector("#camera-view");
+    const cameraVideo = document.querySelector("#camera-video");
+    let activeCameraStream = null;
+    const photoPreview = document.querySelector("#photo-preview");
+    const photoPreviewImage = document.querySelector("#photo-preview-image");
+    const photoFilename = document.querySelector("#photo-filename");
+    const photoFilesize = document.querySelector("#photo-filesize");
+    const photoNote = document.querySelector("#photo-note");
+    const photoDiagnosis = document.querySelector("#photo-diagnosis");
+    const treatmentForm = document.querySelector("#treatment-form");
+    const treatmentCase = document.querySelector("#treatment-case");
+    const treatmentStage = document.querySelector("#treatment-stage");
+    const treatmentProduct = document.querySelector("#treatment-product");
+    const treatmentResult = document.querySelector("#treatment-result");
+    const treatmentSubmit = document.querySelector("#treatment-submit");
+    const treatmentArea = document.querySelector("#treatment-area");
+    const treatmentSeed = document.querySelector("#treatment-seed");
+    const treatmentWater = document.querySelector("#treatment-water");
+    const treatmentAreaField = document.querySelector("#treatment-area-field");
+    const treatmentSeedField = document.querySelector("#treatment-seed-field");
+    const treatmentWaterField = document.querySelector("#treatment-water-field");
+    let treatmentCaseData = [];
+    let treatmentProductData = [];
+    let currentTreatmentOptions = null;
+    let treatmentCasesPromise = Promise.resolve();
+    let selectedPhoto = null;
+    let photoPreviewUrl = null;
+    let diagnosisSequence = 0;
+    let diseaseClassifierPromise = null;
+    let photoAutoSelectedTreatment = false;
+    const sample = { nitrogen: 90, phosphorus: 42, potassium: 43, temperature: 23, humidity: 78, ph: 6.4, rainfall: 180 };
+
+    const tamilUi = {
+      "Crop planning workspace": "விவசாயத் திட்டமிடல் பக்கம்",
+      "Field intelligence · 01": "வயல் தகவல் · 01",
+      "Find the right crop for your soil.": "உங்கள் மண்ணுக்கு ஏற்ற பயிரைத் தேர்ந்தெடுங்கள்.",
+      "Enter your field conditions to explore crops suited to your land.": "உங்கள் வயல் விவரங்களை உள்ளிட்டு ஏற்ற பயிர்களைப் பாருங்கள்.",
+      "Soil & climate assessment": "மண் மற்றும் காலநிலை மதிப்பீடு",
+      "Field conditions": "வயல் விவரங்கள்",
+      "Use a recent soil test and local weather data.": "சமீபத்திய மண் பரிசோதனை மற்றும் உள்ளூர் வானிலைத் தகவலைப் பயன்படுத்துங்கள்.",
+      "Nitrogen": "தழைச்சத்து (நைட்ரஜன்)",
+      "Phosphorus": "மணிச்சத்து (பாஸ்பரஸ்)",
+      "Potassium": "சாம்பல்சத்து (பொட்டாசியம்)",
+      "Temperature": "வெப்பநிலை",
+      "Humidity": "ஈரப்பதம்",
+      "Soil pH": "மண் pH அளவு",
+      "Rainfall": "மழையளவு",
+      "Crop photo scan": "பயிர் படத்தை ஆய்வு செய்யுங்கள்",
+      "15 leaf classes · runs on device": "15 இலை வகைகள் · உங்கள் சாதனத்திலேயே இயங்கும்",
+      "Open camera": "கேமராவைத் திறக்கவும்",
+      "Choose from photos": "புகைப்படத் தொகுப்பிலிருந்து தேர்வு",
+      "Cancel": "ரத்து செய்",
+      "Take photo": "படம் எடு",
+      "Remove": "நீக்கு",
+      "Observed crop symptoms": "பயிரில் காணும் அறிகுறிகள்",
+      "optional": "விருப்பத்தேர்வு",
+      "Yellowing leaves": "இலைகள் மஞ்சளாதல்",
+      "Leaf spots": "இலைப் புள்ளிகள்",
+      "Chewed leaves": "பூச்சி கடித்த இலைகள்",
+      "Wilting": "வாடுதல்",
+      "White powder": "இலையில் வெள்ளைப் படலம்",
+      "Stunted growth": "வளர்ச்சி குன்றுதல்",
+      "Check crop suitability": "பயிர் பொருத்தத்தைப் பார்க்கவும்",
+      "Use sample": "மாதிரி விவரங்களைப் பயன்படுத்து",
+      "N, P and K values are in kg/ha. Rainfall is the seasonal total in mm.": "N, P, K அளவுகள் kg/ha-ல். மழையளவு பருவத்தின் மொத்த mm அளவு.",
+      "Grow with better insight": "தகவலுடன் சிறப்பாகப் பயிரிடுங்கள்",
+      "Every field has potential.": "ஒவ்வொரு வயலுக்கும் வாய்ப்பு உண்டு.",
+      "Field conditions matter.": "வயல் நிலை முக்கியம்.",
+      "Your crop outlook": "உங்கள் பயிர் பரிந்துரை",
+      "Awaiting field data": "வயல் விவரங்களுக்காகக் காத்திருக்கிறது",
+      "Your recommendations will appear here": "பயிர் பரிந்துரைகள் இங்கே தோன்றும்",
+      "Submit your field conditions to see the closest crop matches.": "உங்கள் வயல் விவரங்களைச் சமர்ப்பித்து ஏற்ற பயிர்களைப் பாருங்கள்.",
+      "Medicine, dose & cost planner": "மருந்து, அளவு மற்றும் செலவு கணிப்பு",
+      "TNAU guidance · sample prices": "TNAU வழிகாட்டல் · மாதிரி விலைகள்",
+      "Choose a confirmed crop problem and stage. Advice and dose units follow the cited crop-specific source.": "உறுதிப்படுத்திய பயிர் பிரச்சினை மற்றும் வளர்ச்சி நிலையைத் தேர்வு செய்யுங்கள். அளவு, அலகுகள் ஆதார வழிகாட்டலின்படி.",
+      "Confirmed crop problem": "உறுதிப்படுத்திய பயிர் பிரச்சினை",
+      "Loading crop problems...": "பயிர் பிரச்சினைகள் ஏற்றப்படுகின்றன...",
+      "Choose a confirmed crop problem": "உறுதிப்படுத்திய பிரச்சினையைத் தேர்வு செய்யுங்கள்",
+      "Crop stage": "பயிரின் வளர்ச்சி நிலை",
+      "Choose stage": "நிலையைத் தேர்வு செய்யுங்கள்",
+      "Treatment option": "மருந்து / சிகிச்சைத் தேர்வு",
+      "Choose crop and stage first": "முதலில் பயிரையும் நிலையையும் தேர்வு செய்யுங்கள்",
+      "Choose one treatment option": "ஒரு சிகிச்சையைத் தேர்வு செய்யுங்கள்",
+      "Affected area (ha)": "பாதிக்கப்பட்ட நிலப்பரப்பு (ஹெக்டேர்)",
+      "Total spray water (L)": "தெளிப்பு நீரின் மொத்த அளவு (லிட்டர்)",
+      "Calculate dose & cost": "மருந்தளவு மற்றும் செலவைக் கணக்கிடு",
+      "Prices are sample estimates only where shown; otherwise request a local quote.": "காட்டப்படும் விலைகள் மாதிரி மதிப்பீடுகள் மட்டுமே; இல்லையெனில் உள்ளூர் கடையில் விலை கேளுங்கள்.",
+      "Do not use from a photo or symptom alone. Confirm the crop problem first. Prices are sample estimates only where shown; otherwise request a local quote.": "படம் அல்லது அறிகுறி மட்டும் வைத்து மருந்து பயன்படுத்த வேண்டாம். முதலில் பிரச்சினையை உறுதிப்படுத்துங்கள். விலைகள் மாதிரி மதிப்பீடுகள்; உள்ளூர் விலையைச் சரிபாருங்கள்.",
+      "Top ML prediction": "AI பயிர் பரிந்துரை",
+      "model confidence": "மாதிரி மதிப்பீடு",
+      "Other crops to explore": "பரிசீலிக்கக்கூடிய பிற பயிர்கள்",
+      "Fertilizer review": "உர ஆலோசனை",
+      "Irrigation check": "நீர்ப்பாசன ஆலோசனை",
+      "Pest & disease checks": "பூச்சி மற்றும் நோய் ஆலோசனை",
+      "Assessment complete": "மதிப்பீடு முடிந்தது",
+      "Checking conditions": "விவரங்கள் சரிபார்க்கப்படுகின்றன",
+      "Assessment unavailable": "மதிப்பீடு கிடைக்கவில்லை",
+      "Assessment complete": "மதிப்பீடு முடிந்தது",
+      "The model score is low. No medicine was auto-selected; verify the crop problem with a local specialist.": "பட மதிப்பீடு குறைவாக உள்ளது. மருந்து தேர்வு செய்யப்படவில்லை; உள்ளூர் வேளாண் நிபுணரிடம் உறுதிப்படுத்துங்கள்.",
+      "The model matched a healthy-leaf class. No medicine is suggested; keep monitoring the crop.": "படம் ஆரோக்கியமான இலை வகையுடன் பொருந்துகிறது. மருந்து பரிந்துரை இல்லை; பயிரைக் தொடர்ந்து கண்காணியுங்கள்.",
+      "Matching TNAU dose and sample pack-price details are shown below. Enter calibrated spray-water volume for the field total; verify diagnosis and label before use.": "TNAU மருந்தளவும் மாதிரி விலையும் கீழே. வயலுக்கான மொத்த அளவுக்கு அளவிட்ட தெளிப்பு நீரை உள்ளிடுங்கள்; பயன்படுத்தும் முன் நோயையும் லேபிளையும் உறுதிப்படுத்துங்கள்.",
+      "No verified treatment mapping is available for this scan label. Do not apply a pesticide from this result alone; confirm with a crop specialist.": "இந்த பட முடிவுக்கு சரிபார்க்கப்பட்ட மருந்து வழிகாட்டல் இல்லை. இதை மட்டும் வைத்து பூச்சிக்கொல்லி பயன்படுத்த வேண்டாம்; நிபுணரிடம் உறுதிப்படுத்துங்கள்.",
+      "PlantVillage image-screen result": "PlantVillage பட ஆய்வு முடிவு",
+      "model score, not field accuracy": "பட மாதிரி மதிப்பீடு; வயல் துல்லியம் அல்ல",
+      "Tomato early blight": "தக்காளி ஆரம்ப இலைக் கருகல்",
+      "Tomato late blight": "தக்காளி தாமத இலைக் கருகல்",
+      "Tomato leaf appears healthy": "தக்காளி இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Potato early blight": "உருளைக்கிழங்கு ஆரம்ப இலைக் கருகல்",
+      "Potato late blight": "உருளைக்கிழங்கு தாமத இலைக் கருகல்",
+      "Potato leaf appears healthy": "உருளைக்கிழங்கு இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Bell pepper bacterial spot": "குடைமிளகாய் பாக்டீரியா புள்ளி நோய்",
+      "Bell pepper leaf appears healthy": "குடைமிளகாய் இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Tomato bacterial spot": "தக்காளி பாக்டீரியா புள்ளி நோய்",
+      "Tomato leaf mold": "தக்காளி இலைப் பூஞ்சை நோய்",
+      "Tomato Septoria leaf spot": "தக்காளி செப்டோரியா இலைப் புள்ளி நோய்",
+      "Possible tomato spider-mite damage": "தக்காளியில் சிலந்திப்பேன் சேதம் இருக்கலாம்",
+      "Tomato target spot": "தக்காளி இலக்கு வடிவப் புள்ளி நோய்",
+      "Tomato yellow leaf curl virus pattern": "தக்காளி மஞ்சள் இலைச் சுருள் வைரஸ் அறிகுறி",
+      "Tomato mosaic virus pattern": "தக்காளி மொசைக் வைரஸ் அறிகுறி",
+      "Photo scan treatment match": "பட ஆய்வுக்கான சிகிச்சைத் தேர்வு",
+      "Selected treatment": "தேர்ந்தெடுத்த மருந்து",
+      "Required quantity": "தேவையான அளவு",
+      "Retail packs to buy": "வாங்க வேண்டிய பொட்டலங்கள்",
+      "Sample total": "மாதிரி மொத்த விலை",
+      "Local price": "உள்ளூர் விலை",
+      "Price quote needed": "உள்ளூர் விலையை விசாரிக்கவும்",
+      "Price reference": "விலை ஆதாரம்",
+      "Calculate dose & cost": "மருந்தளவு மற்றும் செலவைக் கணக்கிடு",
+      "Assessing field...": "வயல் விவரங்கள் மதிப்பிடப்படுகின்றன...",
+      "Calculating...": "கணக்கிடப்படுகிறது...",
+      "Loading treatments...": "சிகிச்சை விருப்பங்கள் ஏற்றப்படுகின்றன...",
+      "Could not load treatment options.": "சிகிச்சை விருப்பங்களை ஏற்ற முடியவில்லை.",
+      "Could not load crop problems": "பயிர் பிரச்சினைகளை ஏற்ற முடியவில்லை",
+      "Open camera": "கேமராவைத் திறக்கவும்",
+      "Choose from photos": "புகைப்படத் தொகுப்பிலிருந்து தேர்வு செய்யுங்கள்",
+      "Cancel": "ரத்து செய்",
+      "Take photo": "படம் எடுக்கவும்",
+      "Remove": "நீக்கு",
+      "Crop photo scan": "பயிர் படத்தை ஆய்வு செய்யுங்கள்",
+      "15 leaf classes · runs on device": "15 வகை இலைகள் · உங்கள் சாதனத்திலேயே ஆய்வு",
+      "Scan supports selected tomato, potato and bell-pepper leaf labels; field photos may differ from training images.": "தக்காளி, உருளைக்கிழங்கு, குடைமிளகாய் ஆகியவற்றின் 15 இலை வகைகளை ஆய்வு செய்யும்; வயல் படங்களில் முடிவு மாறலாம்.",
+      "PlantVillage image-screen result": "PlantVillage பட ஆய்வு முடிவு",
+      "On-device image scan": "சாதனத்தில் பட ஆய்வு",
+      "Loading leaf model and scanning photo…": "இலை மாதிரி ஏற்றப்பட்டு படம் ஆய்வு செய்யப்படுகிறது…",
+      "Preparing image scan": "பட ஆய்வு தயாராகிறது",
+      "Scanning image on this device": "இந்த சாதனத்தில் படம் ஆய்வு செய்யப்படுகிறது",
+      "The photo is scanned in your browser and is not uploaded for image recognition.": "படம் உலாவியிலேயே ஆய்வு செய்யப்படும்; பட அடையாளத்திற்காக சர்வருக்கு அனுப்பப்படாது.",
+      "Photo stays on this device during scan; it is not uploaded for image recognition.": "ஆய்வின்போது படம் இந்த சாதனத்திலேயே இருக்கும்; சர்வருக்கு அனுப்பப்படாது.",
+      "Image scan unavailable": "பட ஆய்வு கிடைக்கவில்லை",
+      "Image scan failed. The photo remains on this device and was not sent to the server.": "பட ஆய்வு தோல்வியடைந்தது. படம் இந்த சாதனத்திலேயே உள்ளது; சர்வருக்கு அனுப்பப்படவில்லை.",
+      "Tomato · Fall armyworm": "தக்காளி · காய்த் துளைப்பான் (Fall armyworm)",
+      "Maize · Fall armyworm": "மக்காச்சோளம் · கம்பளிப்புழு (Fall armyworm)",
+      "Groundnut · Rust": "நிலக்கடலை · துரு நோய்",
+      "Groundnut · Alternaria leaf disease": "நிலக்கடலை · அல்டர்னேரியா இலை நோய்",
+      "Groundnut · Stem rot": "நிலக்கடலை · தண்டு அழுகல்",
+      "Tomato · Fruit borer (Helicoverpa armigera)": "தக்காளி · காய்த் துளைப்பான் (Helicoverpa armigera)",
+      "Tomato · Early blight (Alternaria solani)": "தக்காளி · ஆரம்ப இலைக் கருகல் (Alternaria solani)",
+      "Tomato · Late blight (Phytophthora infestans)": "தக்காளி · தாமத இலைக் கருகல் (Phytophthora infestans)",
+      "Maize · Fall armyworm": "மக்காச்சோளம் · கம்பளிப்புழு (Fall armyworm)",
+      "Groundnut · Rust": "நிலக்கடலை · துரு நோய்",
+      "Groundnut · Alternaria leaf disease": "நிலக்கடலை · அல்டர்னேரியா இலை நோய்",
+      "Groundnut · Stem rot": "நிலக்கடலை · தண்டு அழுகல்",
+      "Tomato · Fruit borer (Helicoverpa armigera)": "தக்காளி · காய்த் துளைப்பான் (Helicoverpa armigera)",
+      "Early whorl stage": "ஆரம்ப இலைச் சுருள் நிலை",
+      "Late whorl stage": "பிந்தைய இலைச் சுருள் நிலை",
+      "Flowering and fruiting": "பூக்கும் மற்றும் காய்க்கும் நிலை",
+      "Early blight observed on leaves": "இலைகளில் ஆரம்பக் கருகல் காணப்படும் நிலை",
+      "Late blight observed on leaves or stems": "இலை அல்லது தண்டில் தாமதக் கருகல் காணப்படும் நிலை",
+      "Azadirachtin 1500 ppm · 2,500 ml/ha": "அசாடிராக்டின் 1500 ppm · 2,500 மி.லி./ஹெக்டேர்",
+      "Chlorantraniliprole 18.5 SC · 200 ml/ha": "குளோரான்ட்ரானிலிப்ரோல் 18.5 SC · 200 மி.லி./ஹெக்டேர்",
+      "Flubendiamide 480 SC · 250 ml/ha": "ஃப்ளூபெண்டியமைடு 480 SC · 250 மி.லி./ஹெக்டேர்",
+      "Emamectin benzoate 5 SG · 200 g/ha": "எமாமெக்டின் பென்சோயேட் 5 SG · 200 கிராம்/ஹெக்டேர்",
+      "Novaluron 10 EC · 750 ml/ha": "நோவல்யூரான் 10 EC · 750 மி.லி./ஹெக்டேர்",
+      "Spinetoram 11.7 SC · 250 ml/ha": "ஸ்பைனிடோரம் 11.7 SC · 250 மி.லி./ஹெக்டேர்",
+      "Mancozeb · 1,000 g/ha": "மாங்கோசெப் · 1,000 கிராம்/ஹெக்டேர்",
+      "Chlorothalonil · 1,000 g/ha": "குளோரோதலோனில் · 1,000 கிராம்/ஹெக்டேர்",
+      "Wettable sulphur · 2,500 g/ha": "நனையும் கந்தகம் · 2,500 கிராம்/ஹெக்டேர்",
+      "Tridemorph · 500 ml/ha": "ட்ரைடிமார்ஃப் · 500 மி.லி./ஹெக்டேர்",
+      "Trichoderma viride · 2.5 kg/ha": "டிரைக்கோடெர்மா விரிடி · 2.5 கிலோ/ஹெக்டேர்",
+      "Helilure pheromone traps · 12 traps/ha": "ஹெலில்யூர் பெரோமோன் பொறிகள் · 12 பொறிகள்/ஹெக்டேர்",
+      "Trichogramma pretiosum · 1,00,000 parasitoids/ha": "டிரைக்கோகிராமா பிரிட்டியோசம் · 1,00,000 ஒட்டுண்ணிகள்/ஹெக்டேர்",
+      "HaNPV · 15,00,00,00,00,000 POBs/ha": "HaNPV · 15,00,00,00,00,000 POBs/ஹெக்டேர்",
+      "Mancozeb 75% WP · 2 g/L spray": "மாங்கோசெப் 75% WP · 2 கிராம்/லிட்டர் தெளிப்பு",
+      "Cyazofamid 34.5% SC · 80 ml/ac": "சையசோஃபாமிட் 34.5% SC · 80 மி.லி./ஏக்கர்",
+      "Azoxystrobin 23% SC · 200 ml/ac": "அசாக்ஸிஸ்ட்ரோபின் 23% SC · 200 மி.லி./ஏக்கர்",
+      "Mancozeb 35% SC · 1,000 g/ac": "மாங்கோசெப் 35% SC · 1,000 கிராம்/ஏக்கர்",
+      "Early whorl stage": "ஆரம்ப இலைச் சுருள் நிலை",
+      "Late whorl stage": "பிந்தைய இலைச் சுருள் நிலை",
+      "Flowering and fruiting": "பூக்கும் மற்றும் காய்க்கும் நிலை",
+      "Leaf disease observed": "இலை நோய் காணப்படும் நிலை",
+      "Early blight observed on leaves": "இலைகளில் ஆரம்பக் கருகல் காணப்படும் நிலை",
+      "Late blight observed on leaves or stems": "இலை அல்லது தண்டில் தாமதக் கருகல் காணப்படும் நிலை",
+      "Mancozeb 75% WP": "மாங்கோசெப் 75% WP",
+      "Cyazofamid 34.5% SC": "சையசோஃபாமிட் 34.5% SC",
+      "Mancozeb 75% WP · 2 g/L spray": "மாங்கோசெப் 75% WP · 2 கிராம்/லிட்டர் தெளிப்பு",
+      "Cyazofamid 34.5% SC · 80 ml/ac": "சையசோஃபாமிட் 34.5% SC · 80 மி.லி./ஏக்கர்",
+      "TNAU report advises two applications at weekly intervals after symptoms are noticed.": "அறிகுறி தென்பட்ட பின் வார இடைவெளியில் இரண்டு முறை தெளிக்க TNAU அறிக்கை கூறுகிறது.",
+      "TNAU recommends integrated disease management; follow the current product label.": "ஒருங்கிணைந்த நோய் மேலாண்மையை TNAU பரிந்துரைக்கிறது; தற்போதைய மருந்து லேபிளைப் பின்பற்றுங்கள்.",
+      "Photo scan treatment match": "பட ஆய்வுக்கான சிகிச்சைத் தேர்வு",
+      "Price listing": "விலைப் பட்டியல்",
+      "Indicative ₹250 per 1000 g pack": "1,000 கிராம் பொட்டலத்திற்கு சுமார் ₹250 (மாதிரி விலை)",
+      "Price quote needed": "உள்ளூர் விலையை விசாரிக்கவும்",
+      "Selected treatment": "தேர்ந்தெடுத்த மருந்து",
+      "Required quantity": "தேவையான அளவு",
+      "Retail packs to buy": "வாங்க வேண்டிய பொட்டலங்கள்",
+      "Local price": "உள்ளூர் விலை",
+      "Sample total": "மாதிரி மொத்த விலை",
+      "Your crop outlook": "உங்கள் பயிர் பரிந்துரை",
+      "Assessment complete": "மதிப்பீடு முடிந்தது",
+      "Assessment unavailable": "மதிப்பீடு கிடைக்கவில்லை",
+      "Your recommendations will appear here": "பயிர் பரிந்துரைகள் இங்கே தோன்றும்",
+      "Submit your field conditions to see the closest crop matches.": "உங்கள் வயல் விவரங்களைச் சமர்ப்பித்து ஏற்ற பயிர்களைப் பாருங்கள்.",
+      "Top ML prediction": "AI பயிர் பரிந்துரை",
+      "model confidence": "மாதிரி மதிப்பீடு",
+      "Other crops to explore": "பரிசீலிக்கக்கூடிய பிற பயிர்கள்",
+      "Fertilizer review": "உர ஆலோசனை",
+      "Irrigation check": "நீர்ப்பாசன ஆலோசனை",
+      "Pest & disease checks": "பூச்சி மற்றும் நோய் ஆலோசனை",
+      "PlantVillage image-screen result": "PlantVillage பட ஆய்வு முடிவு",
+      "model score, not field accuracy": "மாதிரி மதிப்பெண்; வயல் துல்லியம் அல்ல",
+      "Tomato early blight": "தக்காளி ஆரம்ப இலைக் கருகல்",
+      "Tomato late blight": "தக்காளி தாமத இலைக் கருகல்",
+      "Tomato leaf appears healthy": "தக்காளி இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Potato early blight": "உருளைக்கிழங்கு ஆரம்ப இலைக் கருகல்",
+      "Potato late blight": "உருளைக்கிழங்கு தாமத இலைக் கருகல்",
+      "Potato leaf appears healthy": "உருளைக்கிழங்கு இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Bell pepper bacterial spot": "குடைமிளகாய் பாக்டீரியா புள்ளி நோய்",
+      "Bell pepper leaf appears healthy": "குடைமிளகாய் இலை ஆரோக்கியமாகத் தெரிகிறது",
+      "Tomato bacterial spot": "தக்காளி பாக்டீரியா புள்ளி நோய்",
+      "Tomato leaf mold": "தக்காளி இலைப் பூஞ்சை நோய்",
+      "Tomato Septoria leaf spot": "தக்காளி செப்டோரியா இலைப் புள்ளி நோய்",
+      "Possible tomato spider-mite damage": "தக்காளியில் சிலந்திப்பேன் சேதம் இருக்கலாம்",
+      "Tomato target spot": "தக்காளி இலக்கு வடிவப் புள்ளி நோய்",
+      "Tomato yellow leaf curl virus pattern": "தக்காளி மஞ்சள் இலைச் சுருள் வைரஸ் அறிகுறி",
+      "Tomato mosaic virus pattern": "தக்காளி மொசைக் வைரஸ் அறிகுறி",
+      "Healthy": "ஆரோக்கியமானது",
+      "Scan complete": "பட ஆய்வு முடிந்தது",
+      "Scan failed": "பட ஆய்வு தோல்வியடைந்தது",
+      "Could not load crop problems": "பயிர் பிரச்சினைகளை ஏற்ற முடியவில்லை",
+      "Your field measurements are compared with the training-data average for jute.": "உங்கள் வயல் அளவுகள் சணல் பயிரின் தரவுச் சராசரியுடன் ஒப்பிடப்படுகின்றன.",
+      "Below the dataset average; confirm with a soil test before adding nutrients.": "தரவுச் சராசரியைவிடக் குறைவு; உரம் சேர்ப்பதற்கு முன் மண் பரிசோதனையை உறுதிப்படுத்துங்கள்.",
+      "Above the dataset average; avoid extra application without soil-test guidance.": "தரவுச் சராசரியைவிட அதிகம்; மண் பரிசோதனை இல்லாமல் கூடுதல் உரம் இட வேண்டாம்.",
+      "Near the dataset average; base any application on a current soil test.": "தரவுச் சராசரிக்கு அருகில் உள்ளது; உரமிடுவதை சமீபத்திய மண் பரிசோதனை அடிப்படையில் தீர்மானியுங்கள்.",
+      "These comparisons are not fertilizer rates. Confirm soil conditions locally before applying fertilizer.": "இந்த ஒப்பீடு உர அளவு பரிந்துரை அல்ல. உரமிடுவதற்கு முன் உள்ளூர் மண் நிலையை உறுதிப்படுத்துங்கள்.",
+      "Seasonal rainfall comparison only; this is not an irrigation schedule or water-volume estimate.": "இது பருவ மழை ஒப்பீடு மட்டுமே; நீர்ப்பாசன அட்டவணையோ நீர் அளவுக் கணக்கோ அல்ல.",
+      "These are general checks, not a diagnosis. Confirm the cause with a local crop specialist before treatment.": "இவை பொதுவான சரிபார்ப்புகள்; நோயறிதல் அல்ல. சிகிச்சைக்கு முன் உள்ளூர் பயிர் நிபுணரிடம் காரணத்தை உறுதிப்படுத்துங்கள்.",
+      "Keep monitoring soil moisture and adjust watering to field conditions.": "மண் ஈரப்பதத்தைத் தொடர்ந்து பார்த்து, வயல் நிலைக்கு ஏற்ப நீர்ப்பாசனத்தை மாற்றுங்கள்.",
+      "Check root-zone moisture regularly; provide supplemental water only when the soil and crop need it.": "வேர் பகுதி ஈரப்பதத்தைத் தொடர்ந்து சரிபார்த்து, மண்ணுக்கும் பயிருக்கும் தேவைப்பட்டால் மட்டுமே கூடுதல் நீர் கொடுங்கள்.",
+      "Monitor drainage and standing water; protect roots from waterlogging.": "வடிகால் மற்றும் தேங்கிய நீரை கவனித்து, வேர்கள் நீரில் மூழ்காமல் பாதுகாக்கவும்.",
+      "No symptoms selected. Scout the crop regularly for changes.": "அறிகுறி தேர்வு செய்யப்படவில்லை. பயிரில் மாற்றங்கள் உள்ளதா என்று தொடர்ந்து பாருங்கள்.",
+      "Enter a valid number for every field condition.": "ஒவ்வொரு வயல் விவரத்திற்கும் சரியான எண்ணை உள்ளிடுங்கள்.",
+      "One or more values are outside the accepted range.": "ஒன்று அல்லது அதற்கு மேற்பட்ட மதிப்புகள் அனுமதிக்கப்பட்ட வரம்பிற்கு வெளியே உள்ளன.",
+      "Choose only symptoms from the provided list.": "கொடுக்கப்பட்ட பட்டியலிலிருந்து அறிகுறிகளை மட்டும் தேர்வு செய்யுங்கள்.",
+      "Choose a supported crop, confirmed pest, and crop stage.": "ஆதரிக்கப்படும் பயிர், உறுதிப்படுத்திய பூச்சி/நோய் மற்றும் வளர்ச்சி நிலையைத் தேர்வு செய்யுங்கள்.",
+      "Enter the affected field area in hectares.": "பாதிக்கப்பட்ட வயல் பரப்பளவை ஹெக்டேரில் உள்ளிடுங்கள்.",
+      "Field area must be greater than 0 and no more than 10,000 hectares.": "பரப்பளவு 0-ஐ விட அதிகமாகவும் 10,000 ஹெக்டேருக்கு மிகாமலும் இருக்க வேண்டும்.",
+      "Enter the calibrated total spray-water volume in litres.": "அளவிட்ட மொத்த தெளிப்பு நீரை லிட்டரில் உள்ளிடுங்கள்.",
+      "Spray-water volume must be greater than 0 and no more than 1,000,000 litres.": "தெளிப்பு நீரளவு 0-ஐ விட அதிகமாகவும் 10,00,000 லிட்டருக்கு மிகாமலும் இருக்க வேண்டும்.",
+      "Choose a treatment listed for this crop stage.": "இந்தப் பயிர் நிலைக்கு பட்டியலிடப்பட்ட சிகிச்சையைத் தேர்வு செய்யுங்கள்.",
+      "Send the treatment selection as JSON.": "சிகிச்சைத் தேர்வு விவரங்களை அனுப்புங்கள்.",
+      "Unable to calculate this treatment.": "இந்த சிகிச்சை அளவைக் கணக்கிட முடியவில்லை.",
+      "Could not load treatment options.": "சிகிச்சை விருப்பங்களை ஏற்ற முடியவில்லை.",
+      "We couldn't complete the assessment": "மதிப்பீட்டை முடிக்க முடியவில்லை",
+      "We couldn't complete the assessment.": "மதிப்பீட்டை முடிக்க முடியவில்லை.",
+      "Unable to assess these values.": "இந்த விவரங்களை மதிப்பிட முடியவில்லை.",
+      "Assessment unavailable": "மதிப்பீடு கிடைக்கவில்லை",
+      "Confirm diagnosis and label before use.": "பயன்படுத்தும் முன் நோயையும் மருந்து லேபிளையும் உறுதிப்படுத்துங்கள்.",
+      "The photo remains on this device; no image was uploaded.": "படம் இந்தச் சாதனத்திலேயே உள்ளது; எந்தப் படமும் upload செய்யப்படவில்லை.",
+      "JPEG, PNG or WebP, up to 5 MB. Scan supports selected tomato, potato and bell-pepper leaf labels; field photos may differ from training images.": "JPEG, PNG அல்லது WebP படம், அதிகபட்சம் 5 MB. தக்காளி, உருளைக்கிழங்கு, குடைமிளகாய் இலை வகைகளை ஆய்வு செய்யும்; வயல் பட முடிவுகள் மாறலாம்.",
+      "Photo stays on this device during scan; it is not uploaded for image recognition.": "படம் இந்தச் சாதனத்திலேயே ஆய்வு செய்யப்படும்; image recognition-க்காக upload செய்யப்படாது.",
+      "The photo is scanned in your browser and is not uploaded for image recognition.": "படம் உங்கள் browser-லேயே ஆய்வு செய்யப்படும்; image recognition-க்காக upload செய்யப்படாது.",
+      "Use a recent soil test and local weather data.": "சமீபத்திய மண் பரிசோதனை மற்றும் உள்ளூர் வானிலைத் தகவலைப் பயன்படுத்துங்கள்.",
+      "Take a crop photo": "பயிர் படத்தை எடுக்கவும்",
+      "Choose a crop photo": "பயிர் புகைப்படத்தைத் தேர்வு செய்யுங்கள்",
+      "Selected crop photo preview": "தேர்ந்தெடுத்த பயிர் படத்தின் முன்னோட்டம்",
+      "Green crop fields stretching across a cultivated landscape": "பசுமையான பயிர் வயல்கள்",
+      "Auto scan supports 15 classes; field photos may differ from training images.": "தானியங்கி ஆய்வு 15 வகைகளை ஆதரிக்கிறது; வயல் பட முடிவுகள் பயிற்சி படங்களிலிருந்து மாறலாம்.",
+      "Crop planning workspace": "விவசாயத் திட்டமிடல் பக்கம்",
+      "TNAU report advises two applications at weekly intervals after symptoms are noticed.": "அறிகுறி தெரிந்த பின் வார இடைவெளியில் இரண்டு முறை தெளிக்க TNAU அறிக்கை பரிந்துரைக்கிறது.",
+      "TNAU recommends integrated disease management; follow the current product label.": "ஒருங்கிணைந்த நோய் மேலாண்மையை TNAU பரிந்துரைக்கிறது; தற்போதைய மருந்து லேபிளைப் பின்பற்றுங்கள்.",
+      "A Coimbatore supplier listed generic Mancozeb powder at ₹250/kg; the exact 75% WP brand/pack price may differ and this is not a live local quote.": "கோயம்புத்தூர் விற்பனையாளர் பட்டியலில் பொதுவான Mancozeb தூள் ₹250/kg எனக் காட்டப்பட்டது; 75% WP brand/pack விலை மாறலாம். இது நேரடி உள்ளூர் விலை அல்ல.",
+      "A matching TNAU dose and sample pack-price details are shown below. Enter calibrated spray-water volume for the field total; verify diagnosis and label before use.": "TNAU மருந்தளவும் மாதிரி பொட்டல விலையும் கீழே. வயலுக்கான மொத்த அளவைக் கணக்கிட அளவிட்ட தெளிப்பு நீரை உள்ளிடுங்கள்; பயன்படுத்தும் முன் நோயையும் லேபிளையும் உறுதிப்படுத்துங்கள்.",
+      "A matching TNAU dose calculation is shown below for the displayed 1 ha sample area. Adjust the area, verify diagnosis, and check the current label before use.": "காட்டப்பட்ட 1 ஹெக்டேர் மாதிரி பரப்பளவுக்கான TNAU மருந்தளவு கீழே உள்ளது. பரப்பளவை மாற்றி, நோயையும் தற்போதைய லேபிளையும் சரிபாருங்கள்.",
+      "No verified treatment mapping is available for this scan label. Do not apply a pesticide from this result alone; confirm with a crop specialist.": "இந்த scan முடிவுக்கு சரிபார்க்கப்பட்ட சிகிச்சை விவரம் இல்லை. இதை மட்டும் வைத்து மருந்து தெளிக்க வேண்டாம்; பயிர் நிபுணரிடம் உறுதிப்படுத்துங்கள்.",
+      "The model score is low. No medicine was auto-selected; verify the crop problem with a local specialist.": "பட மதிப்பீடு குறைவாக உள்ளது. மருந்து தானாகத் தேர்வு செய்யப்படவில்லை; உள்ளூர் நிபுணரிடம் பிரச்சினையை உறுதிப்படுத்துங்கள்.",
+      "The model matched a healthy-leaf class. No medicine is suggested; keep monitoring the crop.": "படம் ஆரோக்கியமான இலை வகையுடன் பொருந்துகிறது. மருந்து பரிந்துரை இல்லை; பயிரைக் தொடர்ந்து கண்காணியுங்கள்.",
+      "PlantVillage model score · not field accuracy": "PlantVillage மாதிரி மதிப்பெண் · வயல் துல்லியம் அல்ல",
+      "The image screen is not a confirmed diagnosis.": "பட ஆய்வு முடிவு உறுதிப்படுத்தப்பட்ட நோயறிதல் அல்ல.",
+      "/ agriculture AI": "/ விவசாய AI",
+      "JPEG, PNG or WebP, up to 5 MB. Select symptoms too; this demo does not diagnose from image pixels.": "JPEG, PNG அல்லது WebP, அதிகபட்சம் 5 MB. படத்திலிருந்து நோயை உறுதி செய்ய முடியாது; அறிகுறிகளையும் தேர்வு செய்யுங்கள்.",
+      "JPEG, PNG or WebP, up to 5 MB. Scan runs on this device for supported tomato, potato and bell-pepper leaf classes.": "JPEG, PNG அல்லது WebP, அதிகபட்சம் 5 MB. தக்காளி, உருளைக்கிழங்கு, குடைமிளகாய் இலை வகைகளை சாதனத்திலேயே ஆய்வு செய்கிறது.",
+      "Photo will be processed temporarily and not stored. Select symptoms too; no visual diagnosis is available.": "படம் தற்காலிகமாக மட்டும் செயலாக்கப்படும்; சேமிக்கப்படாது. அறிகுறிகளையும் தேர்வு செய்யுங்கள்; படத்தின் அடிப்படையில் நோயறிதல் கிடையாது.",
+      "Choose a JPEG, PNG or WebP image.": "JPEG, PNG அல்லது WebP படத்தைத் தேர்வு செய்யுங்கள்.",
+      "Photo must be 5 MB or smaller.": "படம் 5 MB அல்லது அதற்கு குறைவாக இருக்க வேண்டும்.",
+      "Allow camera access in your browser, then try again. You can also choose a photo from your device.": "உலாவியில் கேமரா அனுமதியை வழங்கி மீண்டும் முயற்சிக்கவும்; அல்லது சாதனத்திலிருந்து படத்தைத் தேர்வு செய்யுங்கள்.",
+      "Camera could not be opened. Choose a photo from your device instead.": "கேமராவைத் திறக்க முடியவில்லை. சாதனத்திலிருந்து படத்தைத் தேர்வு செய்யுங்கள்.",
+      "Could not capture the photo. Please try again.": "படம் எடுக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+      "Image scan failed. The photo remains on this device and was not sent to the server.": "பட ஆய்வு தோல்வியடைந்தது. படம் இந்தச் சாதனத்திலேயே உள்ளது; சர்வருக்கு அனுப்பப்படவில்லை.",
+      "Use only after confirming": "உறுதிப்படுத்திய பின் மட்டுமே பயன்படுத்தவும்",
+      "Choose only symptoms from the provided list.": "கொடுக்கப்பட்ட பட்டியலிலிருந்து அறிகுறிகளை மட்டும் தேர்வு செய்யுங்கள்.",
+      "Crop: ": "பயிர்: ",
+      "Use only after confirming brown spot on maize; symptoms or a photo alone are not a diagnosis.": "மக்காச்சோளத்தில் பழுப்பு புள்ளி நோயை உறுதிப்படுத்திய பின் மட்டுமே பயன்படுத்தவும்; அறிகுறி அல்லது படம் மட்டும் நோயறிதல் அல்ல.",
+      "Nutrient imbalance, water stress, or natural leaf ageing": "ஊட்டச்சத்து சமநிலையின்மை, நீர்ப்பற்றாக்குறை அல்லது இயல்பான இலை முதிர்வு",
+      "Possible fungal or bacterial leaf disease": "பூஞ்சை அல்லது பாக்டீரியா இலை நோயாக இருக்கலாம்",
+      "Possible chewing insects or other field pests": "இலை கடிக்கும் பூச்சி அல்லது வயல் பூச்சியாக இருக்கலாம்",
+      "Water stress, root damage, or waterlogged soil": "நீர்ப்பற்றாக்குறை, வேர் சேதம் அல்லது நீர் தேங்கிய மண்",
+      "Possible powdery mildew or another surface growth": "வெண்படலம் நோய் அல்லது வேறு மேற்பரப்பு வளர்ச்சியாக இருக்கலாம்",
+      "Possible nutrient, pH, water, root, or pest stress": "ஊட்டச்சத்து, pH, நீர், வேர் அல்லது பூச்சி பாதிப்பாக இருக்கலாம்",
+      "Check soil moisture and compare a soil test before changing fertilizer.": "உரம் மாற்றுவதற்கு முன் மண் ஈரப்பதத்தையும் மண் பரிசோதனையையும் சரிபாருங்கள்.",
+      "Remove badly affected leaves, avoid wetting foliage, and ask a local specialist to identify the cause.": "கடுமையாகப் பாதித்த இலைகளை அகற்றி, இலைகளை நனைப்பதைத் தவிர்த்து, உள்ளூர் நிபுணரிடம் காரணம் கேளுங்கள்.",
+      "Inspect leaf undersides and nearby plants, identify the pest, and consider non-chemical controls first.": "இலையின் அடிப்பக்கத்தையும் அருகிலுள்ள செடிகளையும் பாருங்கள்; முதலில் ரசாயனமற்ற கட்டுப்பாட்டை முயற்சியுங்கள்.",
+      "Check root-zone moisture and drainage before changing irrigation.": "நீர்ப்பாசனத்தை மாற்றுமுன் வேர் பகுதியில் ஈரப்பதமும் வடிகாலும் சரிபாருங்கள்.",
+      "Improve airflow, avoid overhead watering, and have the plant checked before treatment.": "காற்றோட்டத்தை மேம்படுத்தி, மேலிருந்து நீர் தெளிப்பதைத் தவிர்த்து, சிகிச்சைக்கு முன் செடியை நிபுணரிடம் காட்டுங்கள்.",
+      "Review soil test results and inspect roots and nearby plants for a shared cause.": "மண் பரிசோதனை முடிவைப் பார்த்து, வேர்களையும் அருகிலுள்ள செடிகளையும் சரிபாருங்கள்.",
+      "The listed treatments are alternatives. Choose one suitable option only; do not tank-mix or repeat unless the current product label or a qualified local adviser says to.": "பட்டியலிலுள்ளவை மாற்று சிகிச்சைகள். ஒன்றை மட்டும் தேர்வு செய்யுங்கள்; லேபிள் அல்லது தகுதியான ஆலோசனை இல்லாமல் கலக்கவோ மீண்டும் பயன்படுத்தவோ வேண்டாம்.",
+      "Keep people, animals, water sources, and beneficial organisms protected as required by the product label.": "மருந்து லேபிள் கூறும் பாதுகாப்பின்படி மனிதர்கள், விலங்குகள், நீர்நிலைகள் மற்றும் பயனுள்ள உயிரினங்களைப் பாதுகாக்கவும்.",
+      "Tomato · Early blight (Alternaria solani)": "தக்காளி · ஆரம்ப இலைக் கருகல் (Alternaria solani)",
+      "Tomato · Late blight (Phytophthora infestans)": "தக்காளி · தாமத இலைக் கருகல் (Phytophthora infestans)",
+      "Early blight (Alternaria solani)": "ஆரம்ப இலைக் கருகல் (Alternaria solani)",
+      "Late blight (Phytophthora infestans)": "தாமத இலைக் கருகல் (Phytophthora infestans)",
+      "Fruit borer (Helicoverpa armigera)": "காய்த் துளைப்பான் (Helicoverpa armigera)",
+      "Alternaria leaf disease": "அல்டர்னேரியா இலை நோய்",
+      "Rust": "துரு நோய்",
+      "Stem rot": "தண்டு அழுகல்",
+      "Early blight observed on leaves": "இலைகளில் ஆரம்பக் கருகல் காணப்படும் நிலை",
+      "Late blight observed on leaves or stems": "இலை அல்லது தண்டில் தாமதக் கருகல் காணப்படும் நிலை",
+      "Mancozeb 75% WP": "மாங்கோசெப் 75% WP",
+      "Cyazofamid 34.5% SC": "சையசோஃபாமிட் 34.5% SC",
+      "Application window:": "பயன்பாட்டு நேரம்:",
+      "Indicative sample price per retail pack, not a live local quote.": "சில்லறைப் பொட்டலத்திற்கான மாதிரி விலை; நேரடி உள்ளூர் விலை அல்ல.",
+      "The model matched a healthy-leaf class.": "மாதிரி ஆரோக்கியமான இலை வகையுடன் பொருந்தியது.",
+    };
+
+    const cropNamesTa = {
+      rice: "நெல்", maize: "மக்காச்சோளம்", chickpea: "கொண்டைக்கடலை", kidneybeans: "ராஜ்மா",
+      pigeonpeas: "துவரை", mothbeans: "மொச்சைப்பயறு", mungbean: "பாசிப்பயறு", blackgram: "உளுந்து",
+      lentil: "மசூர் பருப்பு", pomegranate: "மாதுளை", banana: "வாழை", mango: "மாம்பழம்",
+      grapes: "திராட்சை", watermelon: "தர்பூசணி", muskmelon: "முலாம்பழம்", apple: "ஆப்பிள்",
+      orange: "ஆரஞ்சு", papaya: "பப்பாளி", coconut: "தென்னை", cotton: "பருத்தி", jute: "சணல்", coffee: "காபி",
+      tomato: "தக்காளி", potato: "உருளைக்கிழங்கு", pepper: "குடைமிளகாய்", groundnut: "நிலக்கடலை",
+    };
+
+    function makeBilingual(english, tamil) {
+      return `<span class="bilingual-copy"><span class="bilingual-ta" lang="ta">${escapeHtml(tamil)}</span><span class="bilingual-en" lang="en">${escapeHtml(english)}</span></span>`;
+    }
+
+    function bilingualize(root) {
+      const textNodes = [];
+      if (root.nodeType === Node.TEXT_NODE) textNodes.push(root);
+      else if (root.nodeType === Node.ELEMENT_NODE || root.nodeType === Node.DOCUMENT_NODE) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+      }
+      for (const textNode of textNodes) {
+        const parent = textNode.parentElement;
+        if (!parent || parent.closest(".bilingual-copy, script, style")) continue;
+        const original = textNode.nodeValue;
+        const trimmed = original.trim();
+        const tamil = tamilUi[trimmed] || cropNamesTa[trimmed.toLowerCase()];
+        if (!tamil) continue;
+        if (parent.tagName === "OPTION") {
+          textNode.nodeValue = `${tamil} / ${trimmed}`;
+          continue;
+        }
+        const leading = original.slice(0, original.indexOf(trimmed));
+        const trailing = original.slice(original.indexOf(trimmed) + trimmed.length);
+        const wrapper = document.createElement("span");
+        wrapper.className = "bilingual-copy";
+        const tamilSpan = document.createElement("span");
+        tamilSpan.className = "bilingual-ta";
+        tamilSpan.lang = "ta";
+        tamilSpan.textContent = tamil;
+        const englishSpan = document.createElement("span");
+        englishSpan.className = "bilingual-en";
+        englishSpan.lang = "en";
+        englishSpan.textContent = trimmed;
+        wrapper.append(tamilSpan, englishSpan);
+        const fragment = document.createDocumentFragment();
+        if (leading) fragment.append(document.createTextNode(leading));
+        fragment.append(wrapper);
+        if (trailing) fragment.append(document.createTextNode(trailing));
+        textNode.replaceWith(fragment);
+      }
+    }
+
+    function bilingualizeAttributes(root) {
+      const elements = root.querySelectorAll ? [root, ...root.querySelectorAll("[aria-label], [alt], [title], input[placeholder]")] : [];
+      for (const element of elements) {
+        for (const attribute of ["aria-label", "alt", "title", "placeholder"]) {
+          const value = element.getAttribute?.(attribute);
+          if (value && tamilUi[value]) element.setAttribute(attribute, tamilUi[value]);
+        }
+      }
+    }
+
+    function startTamilFirstInterface() {
+      bilingualize(document.body);
+      bilingualizeAttributes(document.body);
+      const observer = new MutationObserver(records => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (node.nodeType === Node.TEXT_NODE) bilingualize(node);
+            else if (node.nodeType === Node.ELEMENT_NODE) {
+              bilingualize(node);
+              bilingualizeAttributes(node);
+            }
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+    }
+
+    function cropNameTamil(crop) {
+      return cropNamesTa[String(crop).toLowerCase()] || crop;
+    }
+
+    function renderAdvisories(advisories) {
+      const nutrientNamesTa = { N: "நைட்ரஜன்", P: "பாஸ்பரஸ்", K: "பொட்டாசியம்" };
+      const statusesTa = { below: "குறைவு", near: "அருகில்", above: "அதிகம்" };
+      const nutrientItems = advisories.fertilizer.items.map(item => {
+        const english = `${item.nutrient} ${item.status} reference (${item.value} vs ${item.reference} kg/ha)`;
+        const tamil = `${nutrientNamesTa[item.nutrient] || item.nutrient}: ${statusesTa[item.status] || item.status} (உங்கள் மதிப்பு ${item.value}; பயிர் தரவு ஒப்பீடு ${item.reference} kg/ha)`;
+        return `<li>${makeBilingual(english, tamil)}<span class="advisory-meta">${escapeHtml(item.action)}</span></li>`;
+      }).join("");
+      const symptomItems = advisories.plantHealth.observations.map(item => {
+        const english = `${item.label} · ${item.cause}`;
+        const tamil = `${tamilUi[item.label] || item.label} · ${tamilUi[item.cause] || "காரணத்தை உள்ளூர் நிபுணரிடம் உறுதிப்படுத்துங்கள்"}`;
+        return `<li>${makeBilingual(english, tamil)}<span class="advisory-meta">${escapeHtml(item.action)}</span></li>`;
+      }).join("");
+      const fertilizerSummary = makeBilingual(
+        advisories.fertilizer.summary,
+        `உங்கள் NPK அளவுகள் ${cropNameTamil(advisories.fertilizer.summary.split(" for ").pop().replace(/\.$/, ""))} பயிரின் தரவு சராசரியுடன் ஒப்பிடப்பட்டுள்ளன.`,
+      );
+      const irrigationLine = `${advisories.irrigation.status} · ${advisories.irrigation.rainfall} mm seasonal rainfall vs ${advisories.irrigation.reference} mm crop reference.`;
+      const irrigationTamilStatus = {
+        "Below crop reference": "பயிர் ஒப்பீட்டைவிடக் குறைவு",
+        "Above crop reference": "பயிர் ஒப்பீட்டைவிட அதிகம்",
+        "Near crop reference": "பயிர் ஒப்பீட்டுக்கு அருகில்",
+      }[advisories.irrigation.status] || advisories.irrigation.status;
+      const plantHealthSummary = advisories.plantHealth.observations.length
+        ? `தேர்ந்தெடுத்த ${advisories.plantHealth.observations.length} அறிகுறிக்கான முதல் சரிபார்ப்பு வழிகாட்டல்.`
+        : "அறிகுறி தேர்வு செய்யப்படவில்லை. பயிரை தொடர்ந்து கண்காணியுங்கள்.";
+
+      return `
+        <div class="advisories">
+          <section class="advisory-row">
+            <div class="advisory-heading"><span class="advisory-index">01</span><h3>Fertilizer review</h3></div>
+            <div class="advisory-copy"><p>${fertilizerSummary}</p><ul>${nutrientItems}</ul><p class="advisory-note">${escapeHtml(advisories.fertilizer.note)}</p></div>
+          </section>
+          <section class="advisory-row">
+            <div class="advisory-heading"><span class="advisory-index">02</span><h3>Irrigation check</h3></div>
+            <div class="advisory-copy"><p>${makeBilingual(irrigationLine, `${irrigationTamilStatus} · பருவ மழை ${advisories.irrigation.rainfall} mm; பயிர் ஒப்பீடு ${advisories.irrigation.reference} mm.`)}</p><p>${escapeHtml(advisories.irrigation.guidance)}</p><p class="advisory-note">${escapeHtml(advisories.irrigation.note)}</p></div>
+          </section>
+          <section class="advisory-row">
+            <div class="advisory-heading"><span class="advisory-index">03</span><h3>Pest &amp; disease checks</h3></div>
+            <div class="advisory-copy"><p>${makeBilingual(advisories.plantHealth.summary, plantHealthSummary)}</p>${symptomItems ? `<ul>${symptomItems}</ul>` : ""}<p class="advisory-note">${escapeHtml(advisories.plantHealth.note)}</p></div>
+          </section>
+        </div>`;
+    }
+
+    function renderRecommendations(crops, model, advisories, photo) {
+      const [best, ...alternatives] = crops;
+      const modelDisclaimer = `Random Forest trained on ${model.trainingRows.toLocaleString()} dataset records across ${model.cropCount} crops. Held-out validation accuracy: ${model.validationAccuracy}%. Dataset scores are not locally calibrated; confirm with a local agronomist before planting.`;
+      const modelDisclaimerTa = `${model.trainingRows.toLocaleString()} தரவுகளிலும் ${model.cropCount} பயிர்களிலும் Random Forest பயிற்றுவிக்கப்பட்டது. சோதனைத் தரவு துல்லியம் ${model.validationAccuracy}%. உள்ளூர் நிலைக்கு உறுதிப்படுத்தப்படவில்லை; நடவு முன் வேளாண் நிபுணரை அணுகுங்கள்.`;
+      resultBody.className = "recommendation-wrap";
+      resultBody.innerHTML = `
+        <article class="recommendation">
+          <div class="recommend-top">
+            <div><div class="crop-kicker">Top ML prediction</div><div class="crop-name">${makeBilingual(best.name, cropNameTamil(best.name))}</div></div>
+            <div class="fit-score">${best.fit}<small>model confidence</small></div>
+          </div>
+          <p class="reason">${makeBilingual(best.reason, "இந்த மண் மற்றும் காலநிலை அளவுகளுக்கு இந்தப் பயிர் மாதிரியில் அதிக பொருத்தம் பெற்றது.")}</p>
+        </article>
+        <div class="alternatives-title">Other crops to explore</div>
+        ${alternatives.map(crop => `
+          <div class="alternative">
+            <span>${makeBilingual(crop.name, cropNameTamil(crop.name))}</span>
+            <span class="bar-track" aria-hidden="true"><span class="bar-fill" style="display:block;width:${crop.fit}%"></span></span>
+            <span class="alternative-score">${crop.fit}%</span>
+          </div>`).join("")}
+        ${renderAdvisories(advisories)}
+        ${photo ? `<p class="photo-note">${escapeHtml(photo.notice)} The image was not stored.</p>` : ""}
+        <p class="disclaimer">${makeBilingual(modelDisclaimer, modelDisclaimerTa)}</p>`;
+      resultStatus.textContent = photo ? "Photo received · symptom guidance" : "Assessment complete";
+    }
+
+    function renderTreatmentPlan(plan) {
+      const priceLabel = plan.cost.sampleLow === null
+        ? "Price quote needed"
+        : plan.cost.sampleLow === plan.cost.sampleHigh
+          ? `₹${plan.cost.sampleLow.toLocaleString("en-IN")}`
+          : `₹${plan.cost.sampleLow.toLocaleString("en-IN")}–₹${plan.cost.sampleHigh.toLocaleString("en-IN")}`;
+      const rateBasis = plan.quantity.sprayVolumeLitres !== null
+        ? `${Number(plan.product.rate).toLocaleString("en-IN")} ${escapeHtml(plan.product.unit)} per litre × ${plan.quantity.sprayVolumeLitres.toLocaleString("en-IN")} L spray water`
+        : plan.quantity.seedQuantityKg !== null
+          ? `${Number(plan.product.rate).toLocaleString("en-IN")} ${escapeHtml(plan.product.unit)} per kg seed × ${plan.quantity.seedQuantityKg.toLocaleString("en-IN")} kg seed`
+          : plan.product.rateBasis === "per_acre"
+          ? `${Number(plan.product.rate).toLocaleString("en-IN")} ${escapeHtml(plan.product.unit)} per acre for ${plan.quantity.areaAcres} acres`
+          : `${Number(plan.product.rate).toLocaleString("en-IN")} ${escapeHtml(plan.product.unit)} per hectare for ${plan.quantity.areaHectares} ha`;
+      const cropTamil = cropNameTamil(plan.crop);
+      const problemTamil = tamilUi[plan.problem] || plan.problem;
+      const stageTamil = tamilUi[plan.stage] || plan.stage;
+      const productTamil = tamilUi[plan.product.name] || plan.product.name;
+      const unitTamil = { g: "கிராம்", ml: "மி.லி.", kg: "கிலோ", traps: "பொறிகள்", parasitoids: "ஒட்டுண்ணிகள்", POBs: "POBs" }[plan.product.unit] || plan.product.unit;
+      const tamilRate = plan.quantity.sprayVolumeLitres !== null
+        ? `ஒவ்வொரு லிட்டர் அளவிட்ட தெளிப்பு நீருக்கும் ${plan.product.rate} ${unitTamil}; மொத்தம் ${plan.quantity.sprayVolumeLitres} லிட்டர்.`
+        : plan.quantity.seedQuantityKg !== null
+          ? `ஒரு கிலோ விதைக்கு ${plan.product.rate} ${unitTamil}; ${plan.quantity.seedQuantityKg} கிலோ விதைக்கு மொத்தம் ${plan.quantity.required} ${unitTamil}.`
+          : plan.product.rateBasis === "per_acre"
+          ? `ஏக்கருக்கு ${plan.product.rate} ${unitTamil}; ${plan.quantity.areaAcres} ஏக்கருக்கு மொத்தம் ${plan.quantity.required} ${unitTamil}.`
+          : `ஹெக்டேருக்கு ${plan.product.rate} ${unitTamil}; ${plan.quantity.areaHectares} ஹெக்டேருக்கு மொத்தம் ${plan.quantity.required} ${unitTamil}.`;
+      const windowTamil = {
+        "15-20 days after emergence": "முளைத்த 15–20 நாட்களுக்குள்",
+        "35-40 days after emergence": "முளைத்த 35–40 நாட்களில்",
+        "Trichogramma release begins at flower initiation and repeats at 7-day intervals as advised.": "பூக்கும் நிலை தொடங்கும்போது Trichogramma விடவும்; வழிகாட்டலின்படி 7 நாள் இடைவெளியில் தொடரவும்.",
+        "TNAU report advises two applications at weekly intervals after symptoms are noticed.": "அறிகுறி தெரிந்த பின் வார இடைவெளியில் இரண்டு முறை தெளிக்க TNAU அறிக்கை கூறுகிறது.",
+        "TNAU recommends integrated disease management; follow the current product label.": "ஒருங்கிணைந்த நோய் மேலாண்மையை TNAU பரிந்துரைக்கிறது; தற்போதைய மருந்து லேபிளைப் பின்பற்றுங்கள்.",
+      }[plan.applicationWindow] || `பயிர் நிலை: ${plan.applicationWindow}`;
+      const costTamil = plan.cost.sampleLow === null
+        ? "இந்த மருந்துக்கு சரிபார்க்கப்பட்ட உள்ளூர் விலை இல்லை; அருகிலுள்ள வேளாண் கடையில் கேளுங்கள்."
+        : `ஒரு ${plan.cost.packSize} ${unitTamil} பொட்டலத்தின் மாதிரி விலை ${priceLabel}. இது நேரடி உள்ளூர் விலை அல்ல.`;
+      const safetyNotesTamil = plan.safetyNotes.map(note => {
+        if (note.startsWith("Use only after confirming")) return `பட முடிவு மட்டும் போதாது. ${cropTamil} பயிரில் ${problemTamil} என்பதை உறுதிப்படுத்திய பிறகே இந்த வழிகாட்டலைப் பயன்படுத்துங்கள்.`;
+        if (note.startsWith("The listed treatments are alternatives.")) return "இவை மாற்று சிகிச்சைகள். ஒன்றை மட்டும் தேர்வு செய்யுங்கள்; லேபிள் அல்லது தகுதியான ஆலோசனை இல்லாமல் கலக்கவோ மீண்டும் தெளிக்கவோ வேண்டாம்.";
+        if (note.startsWith("Source note:")) return `ஆதாரப் புதுப்பிப்பு: ${plan.source.note}. தற்போதைய பதிவு, பயிர், நோய், அளவு, அறுவடைக்கு முன் இடைவெளி மற்றும் பாதுகாப்பு உபகரணங்களை மருந்து லேபிளில் சரிபாருங்கள்.`;
+        if (note.startsWith("Keep people, animals")) return "மருந்து லேபிள் கூறும் பாதுகாப்பின்படி மனிதர்கள், விலங்குகள், நீர்நிலைகள் மற்றும் பயனுள்ள உயிரினங்களைப் பாதுகாக்கவும்.";
+        if (note.startsWith("The cited recommendation is a biological soil treatment")) return "இது இலைத் தெளிப்பு அல்ல; FYM-உடன் மண்ணில் இடும் உயிரியல் சிகிச்சை.";
+        if (note.startsWith("Pheromone traps and beneficial-insect releases")) return "பெரோமோன் பொறிகளும் நன்மை தரும் பூச்சி விடுதலும் கண்காணிப்பு/IPM முறைகள்; தெளிப்பு மருந்துகள் அல்ல.";
+        return "பயன்படுத்தும் முன் உள்ளூர் வேளாண் நிபுணரிடம் சரிபாருங்கள்.";
+      });
+      treatmentResult.innerHTML = `
+        <div class="treatment-metrics">
+          <div class="treatment-metric"><span>Selected treatment</span><strong>${escapeHtml(plan.product.name)}</strong></div>
+          <div class="treatment-metric"><span>Required quantity</span><strong>${plan.quantity.required} ${escapeHtml(plan.quantity.unit)}</strong></div>
+          <div class="treatment-metric"><span>Retail packs to buy</span><strong>${plan.quantity.packagesNeeded} × ${plan.quantity.packageSize} ${escapeHtml(plan.quantity.packageUnit)}</strong></div>
+          <div class="treatment-metric"><span>${plan.cost.sampleLow === null ? "Local price" : "Sample total"}</span><strong>${priceLabel}</strong></div>
+        </div>
+        <div class="treatment-details">
+          <div><p><strong>${makeBilingual(`${plan.crop} · ${plan.problem} · ${plan.stage}`, `${cropTamil} · ${problemTamil} · ${stageTamil}`)}</strong><br>${makeBilingual(rateBasis, tamilRate)}<br>${makeBilingual(`Application window: ${plan.applicationWindow}`, `பயன்பாட்டு நேரம்: ${windowTamil}`)}</p><p>${makeBilingual(`${plan.cost.basis}${plan.cost.priceMinPerPack === null ? "" : ` Per-pack estimate: ₹${plan.cost.priceMinPerPack.toLocaleString("en-IN")}${plan.cost.priceMinPerPack === plan.cost.priceMaxPerPack ? "" : `–₹${plan.cost.priceMaxPerPack.toLocaleString("en-IN")}`} for ${plan.cost.packSize} ${plan.cost.packUnit}.`}`, costTamil)}${plan.cost.priceSourceUrl ? ` <a href="${escapeHtml(plan.cost.priceSourceUrl)}" target="_blank" rel="noopener noreferrer">${makeBilingual("Price reference", "விலை ஆதாரம்")}</a>` : ""}</p><p><a href="${escapeHtml(plan.source.url)}" target="_blank" rel="noopener noreferrer">${makeBilingual(`${plan.source.name} · ${plan.source.note}`, `தமிழ்நாடு வேளாண் பல்கலைக்கழகம் (TNAU) · ${plan.source.note}`)}</a></p></div>
+          <ul>${plan.safetyNotes.map((note, index) => `<li>${makeBilingual(note, safetyNotesTamil[index])}</li>`).join("")}</ul>
+        </div>`;
+      treatmentResult.hidden = false;
+    }
+
+    async function loadTreatmentOptions() {
+      treatmentProduct.disabled = true;
+      treatmentProduct.innerHTML = '<option value="">Loading treatments...</option>';
+      treatmentProductData = [];
+      currentTreatmentOptions = null;
+      treatmentSeedField.hidden = true;
+      treatmentSeed.disabled = true;
+      treatmentSeed.required = false;
+      treatmentAreaField.hidden = false;
+      treatmentArea.disabled = false;
+      treatmentArea.required = true;
+      treatmentWaterField.hidden = true;
+      treatmentWater.disabled = true;
+      treatmentWater.required = false;
+      treatmentResult.hidden = true;
+      if (!treatmentCase.value || !treatmentStage.value) {
+        treatmentProduct.innerHTML = '<option value="">Choose crop and stage first</option>';
+        currentTreatmentOptions = null;
+        return;
+      }
+      try {
+        const query = new URLSearchParams({ case_id: treatmentCase.value, stage: treatmentStage.value });
+        const response = await fetch(`/treatment-options?${query}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load treatment options.");
+        currentTreatmentOptions = data;
+        treatmentProduct.innerHTML = '<option value="">Choose one treatment option</option>';
+        treatmentProductData = data.products;
+        for (const product of data.products) {
+          const option = document.createElement("option");
+          option.value = product.id;
+          const rateUnit = product.rateBasis === "per_litre_spray" ? `${product.unit}/L spray` : product.rateBasis === "per_acre" ? `${product.unit}/ac` : `${product.unit}/ha`;
+          option.textContent = `${product.name} · ${Number(product.rate).toLocaleString("en-IN")} ${rateUnit}`;
+          treatmentProduct.append(option);
+        }
+        treatmentProduct.disabled = false;
+      } catch (error) {
+        treatmentProduct.innerHTML = `<option value="">${escapeHtml(error.message)}</option>`;
+      }
+    }
+
+    async function submitTreatment(event) {
+      event.preventDefault();
+      if (!treatmentForm.reportValidity()) return;
+      treatmentSubmit.disabled = true;
+      treatmentSubmit.querySelector("span").textContent = "Calculating...";
+      try {
+        const response = await fetch("/treatment-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            case_id: treatmentCase.value,
+            stage: treatmentStage.value,
+            product_id: treatmentProduct.value,
+            area_hectares: treatmentArea.value,
+            seed_quantity_kg: treatmentSeed.value,
+            spray_volume_litres: treatmentWater.value,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to calculate this treatment.");
+        renderTreatmentPlan(data);
+      } catch (error) {
+        treatmentResult.innerHTML = `<p class="treatment-error">${escapeHtml(error.message)}</p>`;
+        treatmentResult.hidden = false;
+      } finally {
+        treatmentSubmit.disabled = false;
+        treatmentSubmit.querySelector("span").textContent = "Calculate dose & cost";
+      }
+    }
+
+    async function getDiseaseClassifier() {
+      if (!window.ort) throw new Error("Image scan runtime did not load. Check your internet connection and try again.");
+      if (!diseaseClassifierPromise) {
+        diseaseClassifierPromise = (async () => {
+          window.ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+          window.ort.env.wasm.numThreads = 1;
+          const [modelResponse, weightsResponse, labelsResponse] = await Promise.all([
+            fetch("/static/models/plantvillage/model.onnx"),
+            fetch("/static/models/plantvillage/model.onnx.data"),
+            fetch("/static/models/plantvillage/class_names.json"),
+          ]);
+          if (![modelResponse, weightsResponse, labelsResponse].every(response => response.ok)) {
+            throw new Error("Could not load the local leaf scan model.");
+          }
+          const [modelBytes, weightsBytes, classes] = await Promise.all([
+            modelResponse.arrayBuffer(),
+            weightsResponse.arrayBuffer(),
+            labelsResponse.json(),
+          ]);
+          const session = await window.ort.InferenceSession.create(modelBytes, {
+            executionProviders: ["wasm"],
+            externalData: [{ path: "model.onnx.data", data: new Uint8Array(weightsBytes) }],
+          });
+          return { session, classes };
+        })().catch(error => {
+          diseaseClassifierPromise = null;
+          throw error;
+        });
+      }
+      return diseaseClassifierPromise;
+    }
+
+    async function classifyLeafPhoto(file) {
+      const { session, classes } = await getDiseaseClassifier();
+      const bitmap = await createImageBitmap(file);
+      const resizeScale = 256 / Math.min(bitmap.width, bitmap.height);
+      const resizedWidth = Math.round(bitmap.width * resizeScale);
+      const resizedHeight = Math.round(bitmap.height * resizeScale);
+      const cropSize = 224;
+      const canvas = document.createElement("canvas");
+      canvas.width = cropSize;
+      canvas.height = cropSize;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(
+        bitmap,
+        -(resizedWidth - cropSize) / 2,
+        -(resizedHeight - cropSize) / 2,
+        resizedWidth,
+        resizedHeight,
+      );
+      bitmap.close();
+      const { data: pixels } = context.getImageData(0, 0, cropSize, cropSize);
+      const means = [0.485, 0.456, 0.406];
+      const deviations = [0.229, 0.224, 0.225];
+      const planeSize = cropSize * cropSize;
+      const tensorData = new Float32Array(3 * planeSize);
+      for (let pixel = 0; pixel < planeSize; pixel += 1) {
+        for (let channel = 0; channel < 3; channel += 1) {
+          tensorData[channel * planeSize + pixel] =
+            (pixels[pixel * 4 + channel] / 255 - means[channel]) / deviations[channel];
+        }
+      }
+      const input = new window.ort.Tensor("float32", tensorData, [1, 3, cropSize, cropSize]);
+      const output = await session.run({ [session.inputNames[0]]: input });
+      const scores = output[session.outputNames[0]].data;
+      const maximum = Math.max(...scores);
+      const probabilities = Array.from(scores, score => Math.exp(score - maximum));
+      const total = probabilities.reduce((sum, probability) => sum + probability, 0);
+      const bestIndex = probabilities.indexOf(Math.max(...probabilities));
+      return {
+        label: classes[bestIndex],
+        score: probabilities[bestIndex] / total,
+      };
+    }
+
+    function readableDiagnosis(label) {
+      const names = {
+        Tomato_Early_blight: "Tomato early blight",
+        Tomato_Late_blight: "Tomato late blight",
+        Tomato_healthy: "Tomato leaf appears healthy",
+        Potato___Early_blight: "Potato early blight",
+        Potato___Late_blight: "Potato late blight",
+        Potato___healthy: "Potato leaf appears healthy",
+        Pepper__bell___Bacterial_spot: "Bell pepper bacterial spot",
+        Pepper__bell___healthy: "Bell pepper leaf appears healthy",
+        Tomato_Bacterial_spot: "Tomato bacterial spot",
+        Tomato_Leaf_Mold: "Tomato leaf mold",
+        Tomato_Septoria_leaf_spot: "Tomato Septoria leaf spot",
+        Tomato_Spider_mites_Two_spotted_spider_mite: "Possible tomato spider-mite damage",
+        Tomato__Target_Spot: "Tomato target spot",
+        Tomato__Tomato_YellowLeaf__Curl_Virus: "Tomato yellow leaf curl virus pattern",
+        Tomato__Tomato_mosaic_virus: "Tomato mosaic virus pattern",
+      };
+      return names[label] || label.replaceAll("_", " ");
+    }
+
+    async function fillTreatmentFromPhoto(label, sequence) {
+      const treatmentCaseId = {
+        Tomato_Early_blight: "tomato_early_blight",
+        Tomato_Late_blight: "tomato_late_blight",
+      }[label];
+      if (!treatmentCaseId) return false;
+
+      await treatmentCasesPromise;
+      if (sequence !== diagnosisSequence) return false;
+      const matchingCase = treatmentCaseData.find(item => item.id === treatmentCaseId);
+      if (!matchingCase) return false;
+      photoAutoSelectedTreatment = true;
+      const stage = matchingCase.stages[0];
+      treatmentCase.value = matchingCase.id;
+      treatmentStage.innerHTML = `<option value="${escapeHtml(stage.id)}">${escapeHtml(stage.name)}</option>`;
+      treatmentStage.disabled = false;
+      treatmentStage.value = stage.id;
+      await loadTreatmentOptions();
+      if (sequence !== diagnosisSequence) return false;
+
+      const preferredProductId = label === "Tomato_Early_blight"
+        ? "tomato_early_mancozeb75"
+        : "tomato_late_cyazofamid";
+      treatmentProduct.value = treatmentProductData.some(product => product.id === preferredProductId)
+        ? preferredProductId
+        : treatmentProductData[0]?.id || "";
+      treatmentProduct.dispatchEvent(new Event("change"));
+      const product = treatmentProductData.find(item => item.id === treatmentProduct.value);
+      if (!product) return false;
+
+      if (product.rateBasis === "per_litre_spray") {
+        const priceEnglish = product.samplePriceMinPerPack === null
+          ? "Local price quote required"
+          : `Indicative ₹${Number(product.samplePriceMinPerPack).toLocaleString("en-IN")}${product.samplePriceMinPerPack === product.samplePriceMaxPerPack ? "" : `–₹${Number(product.samplePriceMaxPerPack).toLocaleString("en-IN")}`} per ${product.packSize} ${product.packUnit} pack`;
+        const priceTamil = product.samplePriceMinPerPack === null
+          ? "உள்ளூர் கடையில் விலையை விசாரிக்கவும்."
+          : `மாதிரி விலை ₹${Number(product.samplePriceMinPerPack).toLocaleString("en-IN")} ${product.packSize} ${product.packUnit} பொட்டலத்திற்கு.`;
+        const priceSource = product.priceSourceUrl
+          ? ` <a href="${escapeHtml(product.priceSourceUrl)}" target="_blank" rel="noopener noreferrer">${makeBilingual("Price listing", "விலைப் பட்டியல்")}</a> · ${makeBilingual(product.priceSourceNote || "", "விலை மாறுபடலாம்; வாங்கும் முன் உள்ளூர் கடையில் சரிபாருங்கள்.")}`
+          : "";
+        const tank15LAmount = product.rate * 15;
+        const treatmentNameTamil = tamilUi[product.name] || product.name;
+        const treatmentRateEnglish = `${product.name} · ${product.rate} ${product.unit} per litre of calibrated spray water (${tank15LAmount} ${product.unit} for an example 15 L tank).`;
+        const treatmentRateTamil = `${treatmentNameTamil} · அளவிட்ட தெளிப்பு நீரின் ஒவ்வொரு லிட்டருக்கும் ${product.rate} ${product.unit} (${tank15LAmount} ${product.unit} என்பது 15 லிட்டர் தொட்டிக்கான உதாரணம்).`;
+        const sourceEnglish = `${currentTreatmentOptions?.sourceName || "Treatment source"} · ${currentTreatmentOptions?.sourceNote || ""}`;
+        const sourceTamil = `தமிழ்நாடு வேளாண் பல்கலைக்கழக வழிகாட்டல் · ${currentTreatmentOptions?.sourceNote || ""}`;
+        treatmentResult.innerHTML = `<p><strong>${makeBilingual("Photo scan treatment match", "பட ஆய்வுக்கான சிகிச்சைத் தேர்வு")}</strong><br>${makeBilingual(treatmentRateEnglish, treatmentRateTamil)}<br>${makeBilingual(priceEnglish, priceTamil)}${priceSource}<br>${makeBilingual("Enter total calibrated spray-water litres below to calculate the field total.", "வயலுக்கான மொத்த அளவைக் கணக்கிட அளவிட்ட தெளிப்பு நீரின் லிட்டரை கீழே உள்ளிடுங்கள்.")}</p><p>${makeBilingual(currentTreatmentOptions?.window || "", `பயன்பாட்டு நேரம்: ${tamilUi[currentTreatmentOptions?.window] || currentTreatmentOptions?.window || ""}`)}<br><a href="${escapeHtml(currentTreatmentOptions?.source || "#")}" target="_blank" rel="noopener noreferrer">${makeBilingual(sourceEnglish, sourceTamil)}</a></p><p class="advisory-note">${makeBilingual("Review the diagnosis and current product label before use. This scan is not a field-confirmed diagnosis.", "இது பட ஆய்வு மட்டுமே; உறுதியான நோயறிதல் அல்ல. பயன்படுத்தும் முன் உள்ளூர் நிபுணரையும் தற்போதைய மருந்து லேபிளையும் சரிபாருங்கள்.")}</p>`;
+        treatmentResult.hidden = false;
+      } else {
+        treatmentForm.requestSubmit();
+      }
+      document.querySelector("#treatment-title").scrollIntoView({ behavior: "smooth", block: "center" });
+      return true;
+    }
+
+    async function scanLeafPhoto(file, sequence) {
+      photoDiagnosis.hidden = false;
+      photoDiagnosis.innerHTML = '<div class="diagnosis-label">On-device image scan</div><p class="diagnosis-note">Loading leaf model and scanning photo…</p>';
+      photoNote.textContent = "The photo is scanned in your browser and is not uploaded for image recognition.";
+      photoNote.classList.remove("error");
+      try {
+        const result = await classifyLeafPhoto(file);
+        if (sequence !== diagnosisSequence) return;
+        const diagnosisName = readableDiagnosis(result.label);
+        const modelScore = Math.round(result.score * 100);
+        let note = "This model was trained on curated PlantVillage leaf images; field-image results may be wrong. Confirm crop and symptoms before acting.";
+        if (result.score < 0.65) {
+          note = "The model score is low. No medicine was auto-selected; verify the crop problem with a local specialist.";
+        } else if (result.label.endsWith("healthy")) {
+          note = "The model matched a healthy-leaf class. No medicine is suggested; keep monitoring the crop.";
+        } else {
+          const treatmentApplied = await fillTreatmentFromPhoto(result.label, sequence);
+          if (sequence !== diagnosisSequence) return;
+          note = treatmentApplied
+            ? result.label === "Tomato_Early_blight"
+              ? "Matching TNAU dose and sample pack-price details are shown below. Enter calibrated spray-water volume for the field total; verify diagnosis and label before use."
+              : "A matching TNAU dose calculation is shown below for the displayed 1 ha sample area. Adjust the area, verify diagnosis, and check the current label before use."
+            : "No verified treatment mapping is available for this scan label. Do not apply a pesticide from this result alone; confirm with a crop specialist.";
+        }
+        photoDiagnosis.innerHTML = `
+          <div class="diagnosis-top"><div><div class="diagnosis-label">PlantVillage image-screen result</div><div class="diagnosis-name">${escapeHtml(diagnosisName)}</div></div><div class="diagnosis-score">${modelScore}%<small>model score · not field accuracy</small></div></div>
+          <p class="diagnosis-note">${escapeHtml(note)}</p>`;
+        setPhotoFileStatus(file, "scan complete", "பட ஆய்வு முடிந்தது");
+      } catch (error) {
+        if (sequence !== diagnosisSequence) return;
+        photoDiagnosis.innerHTML = `<div class="diagnosis-label">Image scan unavailable</div><p class="diagnosis-note">${escapeHtml(error.message)} You can still choose symptoms and request general guidance.</p>`;
+        setPhotoFileStatus(file, "scan failed", "பட ஆய்வு தோல்வியடைந்தது");
+        photoNote.textContent = "Image scan failed. The photo remains on this device and was not sent to the server.";
+        photoNote.classList.add("error");
+      }
+    }
+
+    function setPhotoFileStatus(file, englishStatus, tamilStatus) {
+      const size = `${(file.size / 1024).toFixed(0)} KB`;
+      photoFilesize.innerHTML = makeBilingual(`${size} · ${englishStatus}`, `${size} · ${tamilStatus}`);
+    }
+
+    function selectPhoto(file) {
+      if (!file) return;
+      if (!file.type.startsWith("image/") || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        clearPhoto();
+        photoNote.textContent = "Choose a JPEG, PNG or WebP image.";
+        photoNote.classList.add("error");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        clearPhoto();
+        photoNote.textContent = "Photo must be 5 MB or smaller.";
+        photoNote.classList.add("error");
+        return;
+      }
+      clearPhotoTreatment();
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+      selectedPhoto = file;
+      const sequence = ++diagnosisSequence;
+      photoPreviewUrl = URL.createObjectURL(file);
+      photoPreviewImage.src = photoPreviewUrl;
+      photoFilename.textContent = file.name;
+      setPhotoFileStatus(file, "scanning on device", "சாதனத்தில் ஆய்வு நடக்கிறது");
+      photoPreview.hidden = false;
+      photoDiagnosis.hidden = false;
+      photoDiagnosis.innerHTML = '<div class="diagnosis-label">Preparing image scan</div>';
+      photoNote.textContent = "Photo stays on this device during scan; it is not uploaded for image recognition.";
+      photoNote.classList.remove("error");
+      scanLeafPhoto(file, sequence);
+    }
+
+    function clearPhoto() {
+      diagnosisSequence += 1;
+      clearPhotoTreatment();
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+      photoPreviewUrl = null;
+      selectedPhoto = null;
+      cameraInput.value = "";
+      galleryInput.value = "";
+      photoPreviewImage.removeAttribute("src");
+      photoPreview.hidden = true;
+      photoDiagnosis.hidden = true;
+      photoDiagnosis.innerHTML = "";
+      treatmentResult.hidden = true;
+      photoNote.textContent = "JPEG, PNG or WebP, up to 5 MB. Scan runs on this device for supported tomato, potato and bell-pepper leaf classes.";
+      photoNote.classList.remove("error");
+    }
+
+    function clearPhotoTreatment() {
+      if (!photoAutoSelectedTreatment) return;
+      photoAutoSelectedTreatment = false;
+      treatmentCase.value = "";
+      treatmentStage.innerHTML = '<option value="">Choose stage</option>';
+      treatmentStage.disabled = true;
+      treatmentProduct.innerHTML = '<option value="">Choose crop and stage first</option>';
+      treatmentProduct.disabled = true;
+      treatmentProductData = [];
+      treatmentSeedField.hidden = true;
+      treatmentSeed.disabled = true;
+      treatmentSeed.required = false;
+      treatmentAreaField.hidden = false;
+      treatmentArea.disabled = false;
+      treatmentArea.required = true;
+      treatmentWaterField.hidden = true;
+      treatmentWater.disabled = true;
+      treatmentWater.required = false;
+      treatmentResult.hidden = true;
+    }
+
+    function closeCamera() {
+      if (activeCameraStream) {
+        for (const track of activeCameraStream.getTracks()) track.stop();
+      }
+      activeCameraStream = null;
+      cameraVideo.srcObject = null;
+      cameraView.hidden = true;
+    }
+
+    async function openCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        cameraInput.click();
+        return;
+      }
+      try {
+        closeCamera();
+        activeCameraStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: "environment" } },
+        });
+        cameraVideo.srcObject = activeCameraStream;
+        cameraView.hidden = false;
+        await cameraVideo.play();
+      } catch (error) {
+        closeCamera();
+        photoNote.textContent = error.name === "NotAllowedError"
+          ? "Allow camera access in your browser, then try again. You can also choose a photo from your device."
+          : "Camera could not be opened. Choose a photo from your device instead.";
+        photoNote.classList.add("error");
+      }
+    }
+
+    async function capturePhoto() {
+      if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      canvas.getContext("2d").drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+      const photoBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+      if (!photoBlob) {
+        photoNote.textContent = "Could not capture the photo. Please try again.";
+        photoNote.classList.add("error");
+        return;
+      }
+      closeCamera();
+      selectPhoto(new File([photoBlob], `crop-${Date.now()}.jpg`, { type: "image/jpeg" }));
+    }
+
+    async function submitConditions() {
+      if (!form.reportValidity()) return;
+      submitButton.disabled = true;
+      submitButton.querySelector("span").textContent = "Assessing field...";
+      resultStatus.textContent = "Checking conditions";
+      try {
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+        payload.symptoms = formData.getAll("symptoms");
+        const response = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to assess these values.");
+        renderRecommendations(data.crops, data.model, data.advisories, null);
+      } catch (error) {
+        resultBody.className = "empty-state";
+        resultBody.innerHTML = `<strong>We couldn't complete the assessment</strong><p>${error.message}</p>`;
+        resultStatus.textContent = "Assessment unavailable";
+      } finally {
+        submitButton.disabled = false;
+        submitButton.querySelector("span").textContent = "Check crop suitability";
+      }
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      submitConditions();
+    });
+    document.querySelector("#camera-button").addEventListener("click", openCamera);
+    document.querySelector("#gallery-button").addEventListener("click", () => {
+      closeCamera();
+      if (typeof galleryInput.showPicker === "function") galleryInput.showPicker();
+      else galleryInput.click();
+    });
+    document.querySelector("#close-camera").addEventListener("click", closeCamera);
+    document.querySelector("#capture-photo").addEventListener("click", capturePhoto);
+    cameraInput.addEventListener("change", () => selectPhoto(cameraInput.files[0]));
+    galleryInput.addEventListener("change", () => selectPhoto(galleryInput.files[0]));
+    document.querySelector("#remove-photo").addEventListener("click", clearPhoto);
+    treatmentCase.addEventListener("change", () => {
+      photoAutoSelectedTreatment = false;
+      const selectedCase = treatmentCaseData.find(item => item.id === treatmentCase.value);
+      treatmentStage.innerHTML = '<option value="">Choose stage</option>';
+      if (selectedCase) {
+        for (const stage of selectedCase.stages) {
+          const option = document.createElement("option");
+          option.value = stage.id;
+          option.textContent = stage.name;
+          treatmentStage.append(option);
+        }
+      }
+      treatmentStage.disabled = !selectedCase;
+      treatmentStage.value = "";
+      treatmentProduct.innerHTML = '<option value="">Choose crop and stage first</option>';
+      treatmentProduct.disabled = true;
+      treatmentProductData = [];
+      treatmentAreaField.hidden = false;
+      treatmentArea.disabled = false;
+      treatmentArea.required = true;
+      treatmentWaterField.hidden = true;
+      treatmentWater.disabled = true;
+      treatmentWater.required = false;
+      loadTreatmentOptions();
+    });
+    treatmentStage.addEventListener("change", loadTreatmentOptions);
+    treatmentProduct.addEventListener("change", () => {
+      const product = treatmentProductData.find(item => item.id === treatmentProduct.value);
+      const concentrationRate = product?.rateBasis === "per_litre_spray";
+      const seedRate = product?.rateBasis === "per_kg_seed";
+      treatmentAreaField.hidden = concentrationRate || seedRate;
+      treatmentArea.disabled = concentrationRate || seedRate;
+      treatmentArea.required = !concentrationRate && !seedRate;
+      treatmentSeedField.hidden = !seedRate;
+      treatmentSeed.disabled = !seedRate;
+      treatmentSeed.required = seedRate;
+      treatmentWaterField.hidden = !concentrationRate;
+      treatmentWater.disabled = !concentrationRate;
+      treatmentWater.required = concentrationRate;
+      treatmentResult.hidden = true;
+    });
+    treatmentForm.addEventListener("submit", submitTreatment);
+    treatmentCasesPromise = fetch("/treatment-cases")
+      .then(response => response.json())
+      .then(data => {
+        treatmentCaseData = data.cases || [];
+        treatmentCase.innerHTML = '<option value="">Choose a confirmed crop problem</option>';
+        for (const item of treatmentCaseData) {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = `${item.crop} · ${item.problem}`;
+          treatmentCase.append(option);
+        }
+      })
+      .catch(() => { treatmentCase.innerHTML = '<option value="">Could not load crop problems</option>'; });
+    sampleButton.addEventListener("click", () => {
+      for (const [name, value] of Object.entries(sample)) form.elements[name].value = value;
+      submitConditions();
+    });
+    startTamilFirstInterface();
+  </script>
+</body>
+</html>
